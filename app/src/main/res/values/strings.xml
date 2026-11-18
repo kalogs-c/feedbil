@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">feedbil</string>
+    <string name="home_placeholder_description">Seu leitor de RSS local está em desenvolvimento.</string>
 </resources>
