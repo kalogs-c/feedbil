@@ -10,6 +10,7 @@ class HttpUrlValidatorTest {
     fun `accepts absolute http and https urls`() {
         assertEquals("https://example.com/a?b=1", HttpUrlValidator.sanitize(" https://example.com/a?b=1 "))
         assertEquals("http://example.com", HttpUrlValidator.sanitize("http://example.com"))
+        assertEquals("HTTPS://example.com", HttpUrlValidator.sanitize("HTTPS://example.com"))
     }
 
     @Test
@@ -22,6 +23,8 @@ class HttpUrlValidatorTest {
             "/local/path",
             "https:",
             "not a url",
+            "https://example.com/a b",
+            "https://example.com/a\u0000b",
             "",
             null,
         ).forEach { assertNull(HttpUrlValidator.sanitize(it)) }

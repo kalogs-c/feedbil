@@ -343,7 +343,8 @@ superseded in part by the launch refresh.
       unsafe URLs become plain text.
 - [x] The "Conteúdo fornecido pelo feed" caption and "Abrir original" action
       distinguish RSS content from the publisher's full article.
-- [x] 117 JVM tests pass on Windows (2026-11-19).
+- [x] 124 JVM tests pass on Windows (2026-11-19), including the review
+      follow-up regression cases.
 
 **Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): Compose +
 sanitized rich text with Coil images; images loaded on demand from inline

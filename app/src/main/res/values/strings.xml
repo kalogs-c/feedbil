@@ -79,4 +79,5 @@
     <string name="article_detail_error_description">Tente novamente em instantes.</string>
     <string name="article_detail_image">Imagem do artigo</string>
     <string name="action_open_original">Abrir original</string>
+    <string name="action_open_article">Abrir artigo</string>
 </resources>

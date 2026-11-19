@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kalogsc.feedbil.domain.model.Article
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class ArticleDetailUiState(
     val isLoading: Boolean = true,
@@ -47,7 +49,11 @@ class ArticleDetailViewModel(
                     return@launch
                 }
                 _uiState.update { it.copy(isLoading = false, article = article) }
-                runCatching { markRead(articleId) }
+                // Finishing this write matters for retention and read state, even if the
+                // user taps back immediately and clears this ViewModel's scope.
+                runCatching {
+                    withContext(NonCancellable) { markRead(articleId) }
+                }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Exception) {

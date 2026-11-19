@@ -1,6 +1,7 @@
 package com.kalogsc.feedbil.ui.articles
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -82,39 +85,51 @@ fun ArticleDetailScreen(
             )
         },
     ) { innerPadding ->
-        when {
-            state.isLoading -> CenteredState {
-                CircularProgressIndicator()
-            }
-
-            state.notFound -> CenteredState {
-                Text(
-                    text = stringResource(R.string.article_detail_not_found),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            state.loadFailed -> CenteredState {
-                Text(
-                    text = stringResource(R.string.article_detail_error_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.article_detail_error_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = onRetry) {
-                    Text(stringResource(R.string.action_retry))
+        val defaultUriHandler = LocalUriHandler.current
+        val safeUriHandler = remember(defaultUriHandler) {
+            object : UriHandler {
+                override fun openUri(uri: String) {
+                    runCatching { defaultUriHandler.openUri(uri) }
                 }
             }
+        }
+        CompositionLocalProvider(LocalUriHandler provides safeUriHandler) {
+            Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                when {
+                    state.isLoading -> CenteredState {
+                        CircularProgressIndicator()
+                    }
 
-            state.article != null -> ArticleContent(article = state.article)
+                    state.notFound -> CenteredState {
+                        Text(
+                            text = stringResource(R.string.article_detail_not_found),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+
+                    state.loadFailed -> CenteredState {
+                        Text(
+                            text = stringResource(R.string.article_detail_error_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.article_detail_error_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = onRetry) {
+                            Text(stringResource(R.string.action_retry))
+                        }
+                    }
+
+                    state.article != null -> ArticleContent(article = state.article)
+                }
+            }
         }
     }
 }
@@ -124,80 +139,83 @@ private fun ArticleContent(article: Article) {
     val blocks = remember(article) { ArticleContentFormatter.format(article) }
     val sourceUrl = remember(article) { HttpUrlValidator.sanitize(article.link) }
     val uriHandler = LocalUriHandler.current
+    val imageDescription = stringResource(R.string.article_detail_image)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-            .widthIn(max = 600.dp),
-    ) {
-        Text(
-            text = article.title ?: stringResource(R.string.article_untitled),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.article_detail_date, formatDateTime(article.publishedAt)),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        article.author?.let { author ->
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .widthIn(max = 600.dp),
+        ) {
             Text(
-                text = stringResource(R.string.article_detail_author, author),
+                text = article.title ?: stringResource(R.string.article_untitled),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.article_detail_date, formatDateTime(article.publishedAt)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(R.string.article_detail_content_source),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(4.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(16.dp))
-
-        if (blocks.isEmpty()) {
+            article.author?.let { author ->
+                Text(
+                    text = stringResource(R.string.article_detail_author, author),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = stringResource(R.string.article_detail_no_content),
-                style = MaterialTheme.typography.bodyLarge,
+                text = stringResource(R.string.article_detail_content_source),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-
-        blocks.forEach { block ->
-            when (block) {
-                is ArticleBlock.Paragraph -> Text(
-                    text = block.text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                is ArticleBlock.Image -> AsyncImage(
-                    model = block.url,
-                    contentDescription = stringResource(R.string.article_detail_image),
-                    contentScale = ContentScale.FillWidth,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 1.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                )
-            }
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider()
             Spacer(Modifier.height(16.dp))
-        }
 
-        if (sourceUrl != null) {
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { runCatching { uriHandler.openUri(sourceUrl) } },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(stringResource(R.string.action_open_original))
+            if (blocks.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.article_detail_no_content),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+
+            blocks.forEach { block ->
+                when (block) {
+                    is ArticleBlock.Paragraph -> Text(
+                        text = block.text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    is ArticleBlock.Image -> AsyncImage(
+                        model = block.url,
+                        contentDescription = block.alt ?: imageDescription,
+                        contentScale = ContentScale.FillWidth,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 1.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            if (sourceUrl != null) {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { uriHandler.openUri(sourceUrl) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.action_open_original))
+                }
+            }
+            Spacer(Modifier.height(24.dp))
         }
-        Spacer(Modifier.height(24.dp))
     }
 }
 

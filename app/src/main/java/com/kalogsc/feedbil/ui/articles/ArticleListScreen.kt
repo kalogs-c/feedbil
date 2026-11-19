@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -299,7 +300,11 @@ private fun ArticleRow(item: ArticleListItem, onClick: () -> Unit) {
     val unreadLabel = stringResource(R.string.article_unread)
 
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(
+            onClick = onClick,
+            role = Role.Button,
+            onClickLabel = stringResource(R.string.action_open_article),
+        ),
         leadingContent = {
             Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
                 if (unread) {

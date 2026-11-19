@@ -1,6 +1,8 @@
 package com.kalogsc.feedbil.ui.articles
 
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -55,22 +57,9 @@ class ArticleContentFormatterTest {
 
         val paragraph = blocks.single() as ArticleBlock.Paragraph
         assertEquals("Plain bold italic under link.", paragraph.text.text)
-        assertTrue(
-            paragraph.text.spanStyles.any {
-                it.item.fontWeight == FontWeight.Bold && paragraph.text.substring(it.start, it.end) == "bold"
-            },
-        )
-        assertTrue(
-            paragraph.text.spanStyles.any {
-                it.item.fontStyle == FontStyle.Italic && paragraph.text.substring(it.start, it.end) == "italic"
-            },
-        )
-        assertTrue(
-            paragraph.text.spanStyles.any {
-                it.item.textDecoration == TextDecoration.Underline &&
-                    paragraph.text.substring(it.start, it.end) == "under"
-            },
-        )
+        paragraph.text.assertStyled("bold") { it.fontWeight == FontWeight.Bold }
+        paragraph.text.assertStyled("italic") { it.fontStyle == FontStyle.Italic }
+        paragraph.text.assertStyled("under") { it.textDecoration == TextDecoration.Underline }
         val links = paragraph.text.getLinkAnnotations(0, paragraph.text.length)
         assertEquals(1, links.size)
         assertEquals("https://example.com/more", (links.single().item as LinkAnnotation.Url).url)
@@ -131,6 +120,60 @@ class ArticleContentFormatterTest {
 
         assertTrue(blocks.isNotEmpty())
         assertFalse(blocks.texts().joinToString(" ").contains("<b>"))
+    }
+
+    @Test
+    fun `entity encoded unsafe urls are rejected`() {
+        val blocks = ArticleContentFormatter.parse(
+            """<p><a href="javascript&#58;alert(1)">link</a>""" +
+                """<img src="javascript&#58;alert(1)"></p>""",
+        )
+
+        val paragraph = blocks.single() as ArticleBlock.Paragraph
+        assertEquals("link", paragraph.text.text)
+        assertTrue(paragraph.text.getLinkAnnotations(0, paragraph.text.length).isEmpty())
+        assertTrue(blocks.filterIsInstance<ArticleBlock.Image>().isEmpty())
+    }
+
+    @Test
+    fun `self closing skipped tags do not discard the rest of the article`() {
+        val blocks = ArticleContentFormatter.parse(
+            """<iframe src="https://tracker.example"/><p>Text after iframe</p>""",
+        )
+
+        assertEquals(listOf("Text after iframe"), blocks.texts())
+    }
+
+    @Test
+    fun `closing tags with whitespace do not discard the rest of the article`() {
+        val blocks = ArticleContentFormatter.parse(
+            """<script>alert(1)</script ><p>Text after script</p>""",
+        )
+
+        assertEquals(listOf("Text after script"), blocks.texts())
+    }
+
+    @Test
+    fun `unclosed skipped tag keeps following content as plain text`() {
+        val blocks = ArticleContentFormatter.parse("<script>alert(1)<p>Still here</p>")
+
+        assertTrue(blocks.texts().any { it.contains("Still here") })
+    }
+
+    @Test
+    fun `image alt text is decoded and kept`() {
+        val blocks = ArticleContentFormatter.parse(
+            """<img src="https://cdn.example/a.jpg" alt="Foto &amp; texto">""",
+        )
+
+        assertEquals(
+            ArticleBlock.Image("https://cdn.example/a.jpg", "Foto & texto"),
+            blocks.single(),
+        )
+    }
+
+    private fun AnnotatedString.assertStyled(expected: String, matches: (SpanStyle) -> Boolean) {
+        assertTrue(spanStyles.any { matches(it.item) && substring(it.start, it.end) == expected })
     }
 
     private fun List<ArticleBlock>.texts(): List<String> =

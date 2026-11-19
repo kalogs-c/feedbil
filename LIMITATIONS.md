@@ -20,6 +20,9 @@ issues only; it is not a roadmap. Update it as milestones complete.
   which may be a third-party tracker.
 - Images embedded inside a sentence are rendered as their own block between
   paragraphs instead of flowing inline with the text.
+- If feed markup contains a skipped tag such as `<script>` or `<iframe>` with
+  no closing tag, parsing continues after its opening tag, so that tag's body
+  may be shown as plain text. It is never executed, but it can be noisy.
 - The article detail screen has no instrumented UI tests; loading, read-state
   and formatting behavior is covered at the ViewModel and formatter level.
 - Adding a feed requires a network fetch that proves the URL is a

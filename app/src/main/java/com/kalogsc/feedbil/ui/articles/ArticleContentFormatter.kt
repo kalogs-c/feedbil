@@ -12,7 +12,7 @@ import com.kalogsc.feedbil.domain.model.Article
 /** A readable piece of feed content. Images are blocks so they can size naturally. */
 sealed interface ArticleBlock {
     data class Paragraph(val text: AnnotatedString) : ArticleBlock
-    data class Image(val url: String) : ArticleBlock
+    data class Image(val url: String, val alt: String? = null) : ArticleBlock
 }
 
 /**
@@ -21,7 +21,8 @@ sealed interface ArticleBlock {
  * Feed content is untrusted: scripts, styles, iframes and every non-http(s)
  * URL are dropped. Only a small set of formatting tags is kept. The parser is
  * deliberately forgiving — malformed markup produces less formatting, never
- * an exception — and has no Android dependency so it can be tested on the JVM.
+ * an exception, and never discards the rest of the article — and has no
+ * Android dependency so it can be tested on the JVM.
  */
 object ArticleContentFormatter {
 
@@ -37,6 +38,12 @@ object ArticleContentFormatter {
         "p", "div", "li", "ul", "ol", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
         "table", "tr", "section", "article", "figure", "figcaption",
     )
+    private val skippedCloseTags = skippedTags.associateWith {
+        Regex("""(?i)</\s*$it\s*>""")
+    }
+    private val srcAttribute = attributeRegex("src")
+    private val hrefAttribute = attributeRegex("href")
+    private val altAttribute = attributeRegex("alt")
 
     /** Prefer the full `content:encoded` field; fall back to the description. */
     fun format(article: Article): List<ArticleBlock> =
@@ -83,16 +90,17 @@ object ArticleContentFormatter {
             val closing = rawTag.startsWith("</")
             when (val name = nameMatch.groupValues[1].lowercase()) {
                 in skippedTags -> if (!closing) {
-                    val closeTag = "</$name>"
-                    val closeIndex = source.indexOf(closeTag, index, ignoreCase = true)
-                    index = if (closeIndex < 0) source.length else closeIndex + closeTag.length
+                    index = skipSkippedContent(source, index, rawTag, name)
                 }
 
                 "img" -> if (!closing) {
-                    val src = HttpUrlValidator.sanitize(decodeEntities(attribute(rawTag, "src")))
+                    val src = HttpUrlValidator.sanitize(decodeEntities(attribute(rawTag, srcAttribute)))
                     if (src != null) {
+                        val alt = decodeEntities(attribute(rawTag, altAttribute))
+                            .trim()
+                            .takeIf { it.isNotEmpty() }
                         finishParagraph()
-                        blocks += ArticleBlock.Image(src)
+                        blocks += ArticleBlock.Image(src, alt)
                     }
                 }
 
@@ -116,7 +124,7 @@ object ArticleContentFormatter {
                 "a" -> {
                     paragraph.flushRun()
                     paragraph.link = if (closing) null else {
-                        HttpUrlValidator.sanitize(decodeEntities(attribute(rawTag, "href")))
+                        HttpUrlValidator.sanitize(decodeEntities(attribute(rawTag, hrefAttribute)))
                     }
                 }
 
@@ -126,6 +134,18 @@ object ArticleContentFormatter {
 
         finishParagraph()
         return blocks
+    }
+
+    /**
+     * Moves past the body of a skipped tag. Self-closing tags have no body, and
+     * closing tags tolerate whitespace. If no closing tag is found, parsing
+     * continues after the opening tag: its body may be shown as plain text, but
+     * a malformed tag can never hide the rest of the article.
+     */
+    private fun skipSkippedContent(source: String, start: Int, rawTag: String, name: String): Int {
+        if (rawTag.trimEnd().endsWith("/")) return start
+        val close = skippedCloseTags.getValue(name).find(source, start) ?: return start
+        return close.range.last + 1
     }
 
     /** Finds the `>` that closes a tag, ignoring `>` inside quoted attributes. */
@@ -142,10 +162,11 @@ object ArticleContentFormatter {
         return -1
     }
 
-    private fun attribute(tag: String, name: String): String? {
-        val regex = Regex(
-            """(?i)(?<=\s)${Regex.escape(name)}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""",
-        )
+    private fun attributeRegex(name: String): Regex = Regex(
+        """(?i)(?<=\s)${Regex.escape(name)}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""",
+    )
+
+    private fun attribute(tag: String, regex: Regex): String? {
         val match = regex.find(tag) ?: return null
         return match.groupValues[1]
             .ifEmpty { match.groupValues[2] }
@@ -164,7 +185,8 @@ object ArticleContentFormatter {
     )
 
     private fun decodeEntities(text: String?): String {
-        if (text == null || '&' !in text) return text ?: ""
+        if (text == null) return ""
+        if ('&' !in text) return text
         val result = StringBuilder(text.length)
         var index = 0
         while (index < text.length) {
@@ -197,15 +219,12 @@ object ArticleContentFormatter {
         return result.toString()
     }
 
-    private fun codePoint(value: Int): String? = try {
+    private fun codePoint(value: Int): String? =
         if (value in 0..0x10FFFF && value !in 0xD800..0xDFFF) {
             String(Character.toChars(value))
         } else {
             null
         }
-    } catch (_: IllegalArgumentException) {
-        null
-    }
 
     /** Accumulates one paragraph, applying style spans to each text run. */
     private class Paragraph {

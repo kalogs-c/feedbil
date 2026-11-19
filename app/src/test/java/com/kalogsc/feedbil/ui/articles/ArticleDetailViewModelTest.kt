@@ -14,6 +14,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -72,7 +73,7 @@ class ArticleDetailViewModelTest {
         assertNotNull(state.article)
         assertEquals("https://example.com/story", state.article?.link)
         assertFalse(state.notFound)
-        val stored = repository.getById(articleId)!!
+        val stored = awaitReadArticle(articleId)
         assertTrue(stored.isRead)
         assertEquals(NOW, stored.lastReadAt)
     }
@@ -83,7 +84,7 @@ class ArticleDetailViewModelTest {
 
         viewModel(articleId).awaitState { !it.isLoading }
 
-        assertEquals(NOW, repository.getById(articleId)!!.lastReadAt)
+        assertEquals(NOW, awaitReadArticle(articleId).lastReadAt)
     }
 
     @Test
@@ -93,7 +94,7 @@ class ArticleDetailViewModelTest {
         val state = viewModel.awaitState { !it.isLoading }
 
         assertTrue(state.notFound)
-        assertEquals(null, state.article)
+        assertNull(state.article)
     }
 
     @Test
@@ -107,7 +108,49 @@ class ArticleDetailViewModelTest {
         val state = viewModel.awaitState { !it.isLoading }
 
         assertTrue(state.loadFailed)
-        assertEquals(null, state.article)
+        assertNull(state.article)
+    }
+
+    @Test
+    fun `retry can recover from a failed load`() = runBlocking {
+        val articleId = storeArticle()
+        var fail = true
+        val viewModel = ArticleDetailViewModel(
+            loadArticle = { id ->
+                if (fail) error("Storage unavailable") else repository.getById(id)
+            },
+            markRead = {},
+            articleId = articleId,
+        )
+        viewModel.awaitState { !it.isLoading }
+        fail = false
+
+        viewModel.retry()
+
+        val state = viewModel.awaitState { !it.isLoading && it.article != null }
+        assertEquals(articleId, state.article?.id)
+        assertFalse(state.loadFailed)
+    }
+
+    @Test
+    fun `a failed read write does not hide the article`() = runBlocking {
+        val articleId = storeArticle()
+        val viewModel = ArticleDetailViewModel(
+            loadArticle = repository::getById,
+            markRead = { error("Write failed") },
+            articleId = articleId,
+        )
+
+        val state = viewModel.awaitState { !it.isLoading }
+
+        assertNotNull(state.article)
+        assertFalse(state.loadFailed)
+    }
+
+    private suspend fun awaitReadArticle(articleId: Long) = withTimeout(AWAIT_TIMEOUT_MS) {
+        repository.observeAllWithFeed().first { items ->
+            items.any { it.article.id == articleId && it.article.isRead }
+        }.first { it.article.id == articleId }.article
     }
 
     private suspend fun ArticleDetailViewModel.awaitState(

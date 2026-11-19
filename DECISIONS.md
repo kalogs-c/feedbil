@@ -572,7 +572,9 @@ connection. An image request goes to whatever host the feed names, which may
 be a tracker. Images inside a sentence are hoisted to their own block instead
 of flowing inline; this keeps layout simple and lets images size naturally.
 The "Conteúdo fornecido pelo feed" caption makes clear the app shows RSS
-content, not the publisher's full page.
+content, not the publisher's full page. A malformed skipped tag without a
+closing tag no longer truncates the article: parsing continues after its
+opening tag, so its body may appear as plain (non-executable) text.
 
 ## 2026-11-19 — Links open in the external browser
 
@@ -592,4 +594,5 @@ matches the user's choice.
 **Consequences:** Following a link leaves the app. Unsafe schemes become
 plain, non-clickable text, so embedded instructions in feed content cannot
 trigger navigation. A missing browser is swallowed rather than crashing the
-screen.
+screen: a guarded `UriHandler` is provided around the detail content, so
+inline links and the "Abrir original" button share the same behavior.
