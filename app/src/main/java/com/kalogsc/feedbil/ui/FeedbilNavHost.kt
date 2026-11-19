@@ -10,16 +10,21 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.kalogsc.feedbil.AppContainer
 import com.kalogsc.feedbil.domain.model.Feed
+import com.kalogsc.feedbil.ui.articles.ArticleListRoute
+import com.kalogsc.feedbil.ui.articles.ArticleListViewModel
 import com.kalogsc.feedbil.ui.feeds.FeedFormRoute
 import com.kalogsc.feedbil.ui.feeds.FeedFormViewModel
 import com.kalogsc.feedbil.ui.feeds.FeedListRoute
 import com.kalogsc.feedbil.ui.feeds.FeedListViewModel
 
 /**
- * Plain string routes (see `DECISIONS.md`): two destinations today, and the
- * feed id travels as an optional argument so the form serves both add and edit.
+ * Plain string routes (see `DECISIONS.md`). The combined article list is the
+ * start destination; the feed list is reachable from its top bar and serves
+ * feed management. The feed id travels as an optional argument so the form
+ * serves both add and edit.
  */
 object FeedRoutes {
+    const val ARTICLE_LIST = "articles"
     const val FEED_LIST = "feeds"
     const val FEED_ID_ARG = "feedId"
     const val FEED_FORM = "feedForm?$FEED_ID_ARG={$FEED_ID_ARG}"
@@ -37,9 +42,28 @@ fun FeedbilNavHost(
 
     NavHost(
         navController = navController,
-        startDestination = FeedRoutes.FEED_LIST,
+        startDestination = FeedRoutes.ARTICLE_LIST,
         modifier = modifier,
     ) {
+        composable(FeedRoutes.ARTICLE_LIST) {
+            val viewModel: ArticleListViewModel = viewModel {
+                ArticleListViewModel(
+                    articleRepository = container.articleRepository,
+                    feedRepository = container.feedRepository,
+                    refreshAll = container.feedRefreshService::refreshAll,
+                )
+            }
+            ArticleListRoute(
+                viewModel = viewModel,
+                onOpenFeeds = {
+                    navController.navigate(FeedRoutes.FEED_LIST) {
+                        launchSingleTop = true
+                    }
+                },
+                onAddFeed = { navController.navigate(FeedRoutes.feedForm()) },
+            )
+        }
+
         composable(FeedRoutes.FEED_LIST) {
             val viewModel: FeedListViewModel = viewModel {
                 FeedListViewModel(container.feedRepository)
@@ -48,6 +72,7 @@ fun FeedbilNavHost(
                 viewModel = viewModel,
                 onAddFeed = { navController.navigate(FeedRoutes.feedForm()) },
                 onEditFeed = { feedId -> navController.navigate(FeedRoutes.feedForm(feedId)) },
+                onBack = { navController.popBackStack() },
             )
         }
 

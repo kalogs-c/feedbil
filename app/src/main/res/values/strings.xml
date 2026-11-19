@@ -41,4 +41,30 @@
     <string name="error_unknown">Não foi possível verificar o feed. Tente novamente.</string>
     <string name="error_feed_missing">Este feed não existe mais.</string>
     <string name="error_storage">Não foi possível salvar o feed.</string>
+
+    <!-- Article list -->
+    <string name="articles_title">Artigos</string>
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_open_feeds">Feeds</string>
+    <string name="article_untitled">Sem título</string>
+    <string name="article_unread">Não lido</string>
+    <string name="article_list_meta">%1$s · %2$s</string>
+    <string name="articles_loading">Carregando artigos…</string>
+    <string name="articles_refreshing">Atualizando feeds…</string>
+    <string name="articles_empty_title">Nenhum artigo</string>
+    <string name="articles_empty_description">Nenhum artigo dos seus feeds nos últimos 7 dias.</string>
+    <string name="articles_error_title">Não foi possível atualizar seus feeds</string>
+    <string name="articles_error_description">Verifique sua conexão e tente novamente.</string>
+    <string name="refresh_failed_generic">Não foi possível atualizar os feeds.</string>
+    <plurals name="refresh_failed_summary">
+        <item quantity="one">%1$d feed não pôde ser atualizado.</item>
+        <item quantity="other">%1$d feeds não puderam ser atualizados.</item>
+    </plurals>
+    <string name="refresh_failures_title">Feeds não atualizados</string>
+    <string name="refresh_failure_item">%1$s: %2$s</string>
+    <string name="error_articles_storage">Não foi possível salvar os artigos.</string>
+    <string name="action_details">Detalhes</string>
+    <string name="action_close">Fechar</string>
+    <string name="feed_last_updated">Atualizado em %1$s</string>
+    <string name="feed_never_updated">Nunca atualizado</string>
 </resources>

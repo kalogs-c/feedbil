@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kalogsc.feedbil.R
 import com.kalogsc.feedbil.domain.model.Feed
+import com.kalogsc.feedbil.ui.common.formatDateTime
 import com.kalogsc.feedbil.ui.theme.FeedbilTheme
 
 @Composable
@@ -54,6 +56,7 @@ fun FeedListRoute(
     viewModel: FeedListViewModel,
     onAddFeed: () -> Unit,
     onEditFeed: (Long) -> Unit,
+    onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -61,6 +64,7 @@ fun FeedListRoute(
         state = state,
         onAddFeed = onAddFeed,
         onEditFeed = onEditFeed,
+        onBack = onBack,
         onDeleteFeed = viewModel::delete,
         onRetry = viewModel::retry,
         onDeleteFailureShown = viewModel::deleteFailureShown,
@@ -73,6 +77,7 @@ fun FeedListScreen(
     state: FeedListUiState,
     onAddFeed: () -> Unit,
     onEditFeed: (Long) -> Unit,
+    onBack: () -> Unit,
     onDeleteFeed: (Long) -> Unit,
     onRetry: () -> Unit,
     onDeleteFailureShown: () -> Unit,
@@ -92,7 +97,17 @@ fun FeedListScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.feeds_title)) })
+            TopAppBar(
+                title = { Text(stringResource(R.string.feeds_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
+                    }
+                },
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
@@ -182,12 +197,28 @@ private fun FeedRow(
             )
         },
         supportingContent = {
-            Text(
-                text = feed.url,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column {
+                Text(
+                    text = feed.url,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (feed.lastFetchedAt == null) {
+                        stringResource(R.string.feed_never_updated)
+                    } else {
+                        stringResource(
+                            R.string.feed_last_updated,
+                            formatDateTime(feed.lastFetchedAt),
+                        )
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         },
         trailingContent = {
             IconButton(onClick = onDelete) {
@@ -283,6 +314,7 @@ private fun FeedListScreenPreview() {
             ),
             onAddFeed = {},
             onEditFeed = {},
+            onBack = {},
             onDeleteFeed = {},
             onRetry = {},
             onDeleteFailureShown = {},
