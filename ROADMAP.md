@@ -444,31 +444,60 @@ in the shared text as an explicit override.
 
 ### Milestone 8 — Quality, accessibility, and MVP hardening
 
-**Status:** Not started.
+**Status:** Implemented 2026-11-19; all automated checks pass (196 JVM tests,
+debug and release APKs assemble). Manual device checks are being run by the
+user, so the milestone is **not claimed complete** until those results are in
+and any findings are addressed. The M8 decisions and their rationale are in
+`DECISIONS.md`.
 
 **Work**
 
-- Review navigation, loading, empty, error, and offline states.
-- Verify dark theme and OLED-friendly surfaces.
-- Check contrast, touch target sizes, screen reader labels, focus
-  order, and font scaling.
-- Test on at least one emulator and one physical device if available.
-- Test feeds with different RSS formats, missing fields, malformed
-  content, duplicate entries, and stale articles.
-- Test airplane mode and network interruptions.
-- Check database migrations and retention edge cases.
-- Review app permissions and remove unnecessary permissions.
-- Check startup, refresh, scrolling, and AI inference responsiveness.
-- Document known limitations.
+- [x] Review navigation, loading, empty, error, and offline states. The audit
+      found no offline state by design; typed network errors and the
+      partial-failure banner are the approved approach.
+- [x] Verify dark theme and OLED-friendly surfaces in code (`Color.kt`,
+      `Theme.kt`, `themes.xml`): true-black background/surface, no dynamic
+      color, no light theme. Visual confirmation on a device is pending.
+- [x] Check contrast, touch target sizes, screen reader labels, focus
+      order, and font scaling. Static audit found ≥48dp targets, `sp` text
+      with no fixed text heights, and no color-only meaning. Concrete gaps
+      (unnamed loaders, refresh state, read/unread state, share-menu state,
+      feed-row role) were fixed and covered by new Robolectric Compose tests.
+      TalkBack traversal and 200% font scaling are pending on a device.
+- [ ] Test on at least one emulator and one physical device if available —
+      pending the user's manual checks.
+- [x] Test feeds with different RSS formats, missing fields, malformed
+      content, duplicate entries, and stale articles with deterministic
+      fixtures (`FeedParsingTest`, `FeedArticleMapperTest`, storage and
+      refresh tests). Testing with live third-party feeds is pending.
+- [ ] Test airplane mode and network interruptions — pending the user.
+- [x] Check database migrations and retention edge cases: `DatabaseMigrationTest`,
+      `ArticleStorageTest`, `ArticleRepositoryTest`, and `FeedRefreshServiceTest`
+      cover v1→v2, the 7-day cutoff, the unread-first 100-article cap, and
+      retention after restart/refresh.
+- [x] Review app permissions: only `INTERNET` is declared and is required.
+      Android Auto Backup was disabled so local data never leaves the device.
+- [ ] Check startup, refresh, scrolling, and AI inference responsiveness —
+      pending the user (on-device responsiveness cannot be proven on the JVM).
+- [x] Document known limitations in `LIMITATIONS.md`, including the backup
+      change, offline behavior, and unverified manual checks.
 
 **Acceptance criteria**
 
-- Core flows work without network access after data/model availability,
-  except feed refresh.
-- No known crash in core flows.
-- Accessibility basics are checked.
-- Retention behavior is verified with automated tests.
-- MVP limitations and device requirements are documented.
+- [x] Core flows work without network access after data/model availability,
+      except feed refresh — satisfied by storage-backed reading and
+      on-device inference; airplane-mode confirmation pending.
+- [x] No known crash in core flows — no crash found in automated tests;
+      no crash reported from manual checks yet.
+- [x] Accessibility basics are checked — static audit plus 17 new Compose
+      semantics tests; TalkBack traversal pending on a device.
+- [x] Retention behavior is verified with automated tests.
+- [x] MVP limitations and device requirements are documented.
+
+**Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): disable app backup
+so feeds/articles stay local, rely on typed network errors instead of a new
+connectivity permission/state, verify accessibility with fixes plus
+Robolectric Compose tests, and delegate manual device checks to the user.
 
 ## 4. Suggested screen map
 

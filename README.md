@@ -83,10 +83,13 @@ schema change needs a migration, and there is no destructive fallback.
 `testDebugUnitTest` covers domain rules, storage and migrations, feed
 fetching and mapping, refresh orchestration, validation, article HTML
 sanitization, and all ViewModels.
-Storage, parser, refresh, and ViewModel tests use Robolectric, so they need
-no device; the first run downloads Robolectric's Android runtime jars. No
-test contacts a live feed: the parser runs against fixtures in
-`app/src/test/resources/feeds/`.
+Storage, parser, refresh, ViewModel, and Compose UI tests use Robolectric, so
+they need no device; the first run downloads Robolectric's Android runtime
+jars. Compose tests pin SDK 28 (Espresso's idle strategy needs an API level
+Robolectric still provides). Compose tests assert accessible names, roles,
+states, and key loading/empty/error content; they are not a substitute for
+on-device TalkBack traversal. No test contacts a live feed: the parser runs
+against fixtures in `app/src/test/resources/feeds/`.
 
 ## Documentation
 
