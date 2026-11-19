@@ -55,15 +55,20 @@ enabled.
 Single-module app (`:app`), package `com.kalogsc.feedbil`:
 
 - `app/src/main/java/com/kalogsc/feedbil/MainActivity.kt` — app entry
-  point and home placeholder screen
+  point; hosts `ui/FeedbilNavHost.kt`, the two-screen navigation graph
 - `app/src/main/java/com/kalogsc/feedbil/FeedbilApplication.kt`,
   `AppContainer.kt` — manual dependency container and startup retention
+- `app/src/main/java/com/kalogsc/feedbil/ui/feeds/` — feed list, add/edit
+  form, and their ViewModels
 - `app/src/main/java/com/kalogsc/feedbil/domain/` — feed and article
-  models, retention rules, publication-date policy
+  models, retention rules, publication-date policy, feed input
+  validation
 - `app/src/main/java/com/kalogsc/feedbil/data/local/` — Room entities,
   DAOs, and the versioned database
 - `app/src/main/java/com/kalogsc/feedbil/data/` — repositories that hide
   storage details
+- `app/src/main/java/com/kalogsc/feedbil/data/remote/` — shared HTTP
+  client, feed fetcher, and typed fetch results
 - `app/src/main/java/com/kalogsc/feedbil/ui/theme/` — OLED-friendly
   always-dark Material 3 theme
 
@@ -72,9 +77,11 @@ schema change needs a migration, and there is no destructive fallback.
 
 ## Testing
 
-`testDebugUnitTest` covers domain rules and storage. Storage tests use
-Robolectric with in-memory Room, so they need no device; the first run
-downloads Robolectric's Android runtime jars.
+`testDebugUnitTest` covers domain rules, storage, feed fetching, form
+validation, and the feed ViewModels. Storage, parser, and ViewModel tests
+use Robolectric, so they need no device; the first run downloads
+Robolectric's Android runtime jars. No test contacts a live feed: the
+parser runs against fixtures in `app/src/test/resources/feeds/`.
 
 ## Documentation
 

@@ -231,29 +231,39 @@ fallback; Robolectric-based storage tests.
 
 ### Milestone 3 — Feed management
 
-**Status:** Not started.
+**Status:** Completed 2026-11-19.
 
 **Work**
 
-- Build a feed list screen.
-- Add a feed flow with name and URL fields.
-- Validate required fields and URL format.
-- Fetch the feed to validate that it is reachable and parseable before
-  saving, or agree on another clear failure flow.
-- Support editing and deleting feeds.
-- Show loading, empty, and error states.
-- Avoid blocking the UI during network requests.
+- [x] Build a feed list screen.
+- [x] Add a feed flow with name and URL fields.
+- [x] Validate required fields and URL format.
+- [x] Fetch the feed to validate that it is reachable and parseable
+      before saving, or agree on another clear failure flow.
+- [x] Support editing and deleting feeds.
+- [x] Show loading, empty, and error states.
+- [x] Avoid blocking the UI during network requests.
 
 **Acceptance criteria**
 
-- User can add, edit, and remove feeds.
-- Invalid URLs and unsupported/invalid feeds produce understandable
-  errors.
-- Network failures do not crash the app.
-- Feed list updates after changes.
+- [x] User can add, edit, and remove feeds (verified in
+      `FeedFormViewModelTest` and `FeedListViewModelTest`).
+- [x] Invalid URLs and unsupported/invalid feeds produce understandable
+      errors: name/URL rules in `FeedInputValidator`, HTTP status,
+      not-a-feed, timeout, and network errors in `FeedFetcher`.
+- [x] Network failures do not crash the app (every failure maps to a
+      `FeedFetchResult`; verified in `FeedFetcherTest`).
+- [x] Feed list updates after changes (the list observes Room; verified
+      in `FeedListViewModelTest`).
+- [x] Deleting a feed asks for confirmation because its articles are
+      removed with it.
+- [x] 68 JVM tests pass on Windows (2026-11-19).
 
-**Decision gate** — Resolve RSS parser, HTTP client, validation
-behavior, and whether refresh is manual-only for the MVP.
+**Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): rssparser for
+RSS/Atom parsing, a shared OkHttp client, strict add-feed validation
+(fetch and parse before saving), typed fetch errors, Navigation Compose
+with string routes, cleartext `http://` feeds allowed, unique feed URLs
+enforced by the storage index, and manual refresh only for the MVP.
 
 ### Milestone 4 — Feed refresh and article list
 

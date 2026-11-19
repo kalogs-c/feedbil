@@ -249,3 +249,131 @@ relations) run in the default command and stay deterministic.
 simulator jars. Tests follow the project's `targetSdk` (currently 37);
 if a future SDK is not yet supported by Robolectric, pin
 `@Config(sdk = [...])`.
+
+## 2026-11-19 — RSS/Atom parsing with rssparser 6.1.2
+
+**Decision:** Feed XML is parsed with
+`com.prof18.rssparser:rssparser` 6.1.2, used through `FeedFetcher`. The
+project's own code never touches the XML parser. rssparser also supplies
+the HTTP call it makes, so it is given the app's shared OkHttp client
+(`RssParserBuilder(callFactory = httpClient)`).
+
+**Alternatives considered:**
+
+1. Android's `XmlPullParser` with hand-written RSS and Atom mapping — no
+   dependency, but feeds in the wild vary (RSS 1.0/2.0, Atom, RDF,
+   namespaced Media/ITunes/YouTube elements, CDATA, entity quirks), and
+   mapping them correctly is a large, permanently maintained surface.
+2. `rome`/`ROME` (Java) — mature but JVM-oriented, dated API, large
+   dependency, and weaker Kotlin interop.
+3. `kxml2` — a parser only; the mapping would still be ours.
+4. rssparser (chosen) — Apache-2.0, Android-tested, covers RSS and Atom
+   with typed models.
+
+**Version pin:** 6.2.0 is compiled with Kotlin 2.4 metadata, which the
+Kotlin 2.2 compiler bundled with AGP 9.5.1 cannot read (it reads up to
+2.3). 6.1.2 is the newest release that compiles cleanly here; it targets
+the OkHttp 4.12 API, whose `okhttp3.Call.Factory` supertype is still
+present in OkHttp 5.5.1, so no older HTTP stack is pulled in.
+
+**Consequences:** Parsing errors are the dependency's own exception types
+(`RssParsingException`, `IllegalArgumentException`), mapped to
+`FeedFetchResult` so UI code never sees them. `rssparser` uses
+`XmlPullParserFactory`, which on the JVM resolves to the Android
+implementation only under Robolectric, so parser tests run with
+Robolectric. A feed the parser rejects is reported as "not a feed"
+without being stored.
+
+## 2026-11-19 — One OkHttp client for all feed requests
+
+**Decision:** A single `OkHttpClient` (`FeedHttp.newClient()`) is created
+by `AppContainer` and shared by rssparser. It sets a descriptive
+`User-Agent`, a 10 s connect timeout, a 15 s read timeout, and a 20 s
+whole-call timeout.
+
+**Alternatives considered:** Default OkHttp timeouts (5 calls × 10 s can
+leave the form spinning for minutes), per-request clients (reopens
+connection pools), `HttpURLConnection` (no timeouts sharing, no
+interceptors), Ktor (a second HTTP abstraction).
+
+**Rationale:** One pool, one set of timeouts, and one place to add
+headers. rssparser's own downloader does not set a `User-Agent`; the
+interceptor covers both the parser and any future request.
+
+**Consequences:** Raising the timeout is a single constant change. All
+failures are mapped to `FeedFetchResult` — `HttpError(code)`,
+`NotAFeed`, `Timeout`, `Network`, `InvalidUrl`, `Unknown` — and
+cancellation is rethrown so a closed screen cancels its request.
+
+## 2026-11-19 — Strict add-feed validation before saving
+
+**Decision:** Adding a feed validates the name and URL locally, rejects
+a URL already stored, then fetches and parses the feed. Nothing is
+persisted unless the fetch succeeds. A reachable feed that parses with
+zero items is accepted (a new blog legitimately has no posts). The name
+is required, trimmed, and capped at 80 characters; the URL must be an
+absolute `http`/`https` URL with a host.
+
+**Alternatives considered:**
+
+1. Save first and validate in the background — keeps the tap instant,
+   but leaves a broken feed imitating a working one until refresh.
+2. Save on URL validity only and surface fetch errors in the list — the
+   same problem, plus it lets a typo stay forever.
+3. Save on failure with a "retry" flag — more state for no MVP benefit.
+
+**Rationale:** A list of feeds that silently fail to download is worse
+than a clear "I could not fetch this" at add time, and the user is
+already looking at the form when the error occurs.
+
+**Consequences:** Feeds cannot be added offline. Editing an existing feed
+does not re-fetch unless its URL changed, so renaming works offline. A
+duplicate URL is rejected by a repository check before fetching, and
+still caught by the unique index if two writes race
+(`DuplicateFeedUrlException`).
+
+**Scope:** Milestone 3 validates reachability only; articles are stored
+in Milestone 4. Fetching runs in `Dispatchers.IO` and every failure has
+a pt-BR message.
+
+## 2026-11-19 — Navigation Compose with string routes
+
+**Decision:** Screens are hosted by `FeedbilNavHost` using Navigation
+Compose 2.10.2 and plain string routes: `feeds` and
+`feedForm?feedId={feedId}`. ViewModels are created at the destination
+with `viewModel { }` and explicit constructor arguments from
+`AppContainer`.
+
+**Alternatives considered:** A single `when` over enum state (fine for
+two screens, but back handling, saved state, and future screens are
+hand-rolled); type-safe routes with serializable argument classes
+(cleaner at scale, but one optional `Long` does not justify the extra
+ceremony yet).
+
+**Rationale:** Two destinations, one optional argument, and a form that
+serves both add and edit. String routes are the smallest thing that
+works and are easy to replace later.
+
+**Consequences:** The feed id travels as `LongType` with
+`Feed.UNSAVED_ID` as default, so the same form covers add and edit. The
+feed list is the start destination. Migrating to type-safe routes is
+contained to `FeedbilNavHost`.
+
+## 2026-11-19 — Cleartext HTTP feeds are allowed
+
+**Decision:** The manifest enables a network security config with
+`cleartextTrafficPermitted="true"`, so `http://` feeds work.
+
+**Alternatives considered:** HTTPS-only — safer, but many blogs are
+still served over plain HTTP and would simply fail to add; allowing
+cleartext app-wide (the manifest default on old target SDKs, but not on
+modern ones) — same effect without an explicit, documented file.
+
+**Rationale:** The MVP reads public feeds the user explicitly chooses;
+blocking `http` would reject valid feeds with an error the user cannot
+fix. The setting is declared in one file
+(`res/xml/network_security_config.xml`) instead of relying on a
+deprecated manifest default.
+
+**Consequences:** Feed requests may travel unencrypted. No app data
+other than the feed request is sent. Recorded in `LIMITATIONS.md`.

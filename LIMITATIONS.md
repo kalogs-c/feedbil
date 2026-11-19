@@ -3,9 +3,17 @@
 Known MVP limitations and constraints. This file lists current known
 issues only; it is not a roadmap. Update it as milestones complete.
 
-- Feeds and articles can be stored locally, but no screen uses the
-  storage yet: the home screen is still a placeholder and feeds cannot
-  be added until milestone 3.
+- Feeds can be added, edited, and removed, but their articles are not
+  fetched yet: the feed list is the home screen and shows no articles
+  until milestone 4.
+- Adding a feed requires a network fetch that proves the URL is a
+  reachable feed, so feeds cannot be added offline. Renaming an existing
+  feed works offline; changing its URL does not.
+- `http://` feeds are allowed, so feed requests can travel unencrypted
+  (decided on purpose; see `DECISIONS.md`).
+- The feed list and form have no instrumented UI tests: their behavior
+  is covered at the ViewModel level. No emulator or device was available
+  to verify the screens manually (2026-11-19).
 - The project builds with the Windows-installed Android SDK from the
   Windows side. Linux/WSL builds are not supported: the project resides
   on the Windows filesystem and the Windows SDK build-tools are not
