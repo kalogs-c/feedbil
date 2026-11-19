@@ -1,6 +1,7 @@
 package com.kalogsc.feedbil.data
 
 import com.kalogsc.feedbil.data.local.FeedbilDatabase
+import com.kalogsc.feedbil.data.local.articleEntity
 import com.kalogsc.feedbil.data.local.createInMemoryDatabase
 import com.kalogsc.feedbil.data.local.testContext
 import com.kalogsc.feedbil.data.remote.FeedFetchResult
@@ -18,6 +19,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 class FeedRefreshServiceTest {
@@ -136,6 +138,32 @@ class FeedRefreshServiceTest {
 
         assertEquals(105, summary.newArticleCount)
         assertEquals(100, articleRepository.countByFeed(feed.id))
+    }
+
+    @Test
+    fun `retention is applied when a refresh stores no articles`() = runBlocking {
+        val feed = feedRepository.add("Example", "https://example.com/rss")
+        database.articleDao().insertAll(
+            listOf(
+                articleEntity(
+                    feedId = feed.id,
+                    link = "https://example.com/old",
+                    publishedAt = currentTime - Duration.ofDays(8).toMillis(),
+                ),
+                articleEntity(
+                    feedId = feed.id,
+                    link = "https://example.com/recent",
+                    publishedAt = currentTime,
+                ),
+            ),
+        )
+        fetchOutcome = { FeedFetchResult.Success(title = null, items = emptyList()) }
+
+        val summary = service().refreshAll()
+
+        assertEquals(0, summary.newArticleCount)
+        assertEquals(listOf("https://example.com/recent"), articleRepository.getByFeed(feed.id).map { it.link })
+        assertEquals(currentTime, feedRepository.findById(feed.id)?.lastFetchedAt)
     }
 
     @Test

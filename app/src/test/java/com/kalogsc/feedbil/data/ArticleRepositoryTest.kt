@@ -128,6 +128,22 @@ class ArticleRepositoryTest {
     }
 
     @Test
+    fun `storing an empty batch still applies retention`() = runBlocking {
+        val feedId = createFeed()
+        val expired = now - Duration.ofDays(8).toMillis()
+        articleDao.insertAll(
+            listOf(
+                articleEntity(feedId = feedId, link = "https://example.com/old", publishedAt = expired),
+                articleEntity(feedId = feedId, link = "https://example.com/new", publishedAt = now),
+            ),
+        )
+
+        assertEquals(0, repository.store(feedId, emptyList()))
+
+        assertEquals(listOf("https://example.com/new"), repository.getByFeed(feedId).map { it.link })
+    }
+
+    @Test
     fun `storing articles from another feed is rejected`() = runBlocking {
         val feedId = createFeed()
 

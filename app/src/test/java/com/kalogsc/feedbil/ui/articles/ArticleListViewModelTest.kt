@@ -11,8 +11,14 @@ import com.kalogsc.feedbil.data.local.articleEntity
 import com.kalogsc.feedbil.data.local.createInMemoryDatabase
 import com.kalogsc.feedbil.data.local.testContext
 import com.kalogsc.feedbil.data.remote.FeedFetchResult
+import com.kalogsc.feedbil.domain.model.ArticleListItem
+import com.kalogsc.feedbil.domain.model.Feed
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
@@ -38,6 +44,12 @@ class ArticleListViewModelTest {
     private var refreshAction: suspend () -> RefreshSummary = {
         RefreshSummary(feedCount = 0, newArticleCount = 0, failures = emptyList())
     }
+    private var observeList: () -> Flow<Pair<List<ArticleListItem>, List<Feed>>> = {
+        combine(
+            articleRepository.observeAllWithFeed(),
+            feedRepository.observeAll(),
+        ) { articles, feeds -> articles to feeds }
+    }
 
     private fun viewModel(): ArticleListViewModel = ArticleListViewModel(
         articleRepository = articleRepository,
@@ -46,6 +58,7 @@ class ArticleListViewModelTest {
             refreshCalls += 1
             refreshAction()
         },
+        observeList = { observeList() },
     )
 
     @After
@@ -111,6 +124,52 @@ class ArticleListViewModelTest {
 
         viewModel.dismissRefreshFailure()
         assertTrue(viewModel.awaitState { it.failures.isEmpty() }.failures.isEmpty())
+    }
+
+    @Test
+    fun `the initial state is loading until the first emission`() = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        observeList = {
+            flow {
+                gate.await()
+                emit(emptyList<ArticleListItem>() to emptyList<Feed>())
+            }
+        }
+
+        val viewModel = viewModel()
+        val initial = viewModel.uiState.value
+        assertTrue(initial.isLoading)
+        assertFalse(initial.loadFailed)
+
+        gate.complete(Unit)
+        val loaded = viewModel.awaitState { !it.isLoading }
+        assertFalse(loaded.loadFailed)
+        assertEquals(0, refreshCalls)
+    }
+
+    @Test
+    fun `a database load failure sets loadFailed and retryLoad recovers`() = runBlocking {
+        var shouldFail = true
+        observeList = {
+            if (shouldFail) {
+                flow<Pair<List<ArticleListItem>, List<Feed>>> { error("Database unavailable") }
+            } else {
+                flowOf(emptyList<ArticleListItem>() to emptyList<Feed>())
+            }
+        }
+        val viewModel = viewModel()
+
+        val failed = viewModel.awaitState { it.loadFailed }
+        assertTrue(failed.loadFailed)
+        assertFalse(failed.isLoading)
+
+        shouldFail = false
+        viewModel.retryLoad()
+
+        val recovered = viewModel.awaitState { !it.isLoading && !it.loadFailed }
+        assertTrue(recovered.articles.isEmpty())
+        assertFalse(recovered.hasFeeds)
+        assertEquals(0, refreshCalls)
     }
 
     @Test

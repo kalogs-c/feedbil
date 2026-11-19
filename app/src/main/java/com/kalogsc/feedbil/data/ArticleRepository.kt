@@ -25,15 +25,21 @@ class ArticleRepository(
      * Stores [articles] for [feedId] and applies retention to that feed in the
      * same transaction. Existing rows are left untouched; duplicates are
      * ignored. Returns the number of newly stored articles.
+     *
+     * Retention runs even when [articles] is empty: a successful refresh that
+     * yields no storable entries must still expire old articles for that feed.
      */
     suspend fun store(feedId: Long, articles: List<Article>): Int {
         require(articles.all { it.feedId == feedId }) {
             "Every article must belong to feed $feedId"
         }
-        if (articles.isEmpty()) return 0
 
         return database.withTransaction {
-            val rowIds = articleDao.insertAll(articles.map { it.toEntity() })
+            val rowIds = if (articles.isEmpty()) {
+                emptyList()
+            } else {
+                articleDao.insertAll(articles.map { it.toEntity() })
+            }
             pruneFeed(feedId)
             rowIds.count { it != ROW_ID_REJECTED }
         }

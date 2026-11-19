@@ -7,8 +7,10 @@ import com.kalogsc.feedbil.data.FeedRefreshFailure
 import com.kalogsc.feedbil.data.FeedRepository
 import com.kalogsc.feedbil.data.RefreshSummary
 import com.kalogsc.feedbil.domain.model.ArticleListItem
+import com.kalogsc.feedbil.domain.model.Feed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,11 +32,20 @@ data class ArticleListUiState(
 /**
  * Observes the combined article list and refreshes feeds once when the app
  * launches. After that the only refresh trigger is the user's explicit action.
+ *
+ * [observeList] defaults to the repositories' combined flow and can be
+ * substituted in tests to drive loading and database-failure states.
  */
 class ArticleListViewModel(
     private val articleRepository: ArticleRepository,
     private val feedRepository: FeedRepository,
     private val refreshAll: suspend () -> RefreshSummary,
+    private val observeList: () -> Flow<Pair<List<ArticleListItem>, List<Feed>>> = {
+        combine(
+            articleRepository.observeAllWithFeed(),
+            feedRepository.observeAll(),
+        ) { articles, feeds -> articles to feeds }
+    },
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArticleListUiState())
@@ -80,10 +91,7 @@ class ArticleListViewModel(
         observeJob?.cancel()
         _uiState.update { it.copy(isLoading = true, loadFailed = false) }
         observeJob = viewModelScope.launch {
-            combine(
-                articleRepository.observeAllWithFeed(),
-                feedRepository.observeAll(),
-            ) { articles, feeds -> articles to feeds }
+            observeList()
                 .catch {
                     _uiState.update { state -> state.copy(isLoading = false, loadFailed = true) }
                 }
