@@ -95,4 +95,12 @@
     <string name="ai_summary_error_input">Este artigo é longo demais para o modelo de resumo.</string>
     <string name="ai_summary_error_model">O modelo de IA não está disponível no aparelho.</string>
     <string name="ai_summary_error_inference">Não foi possível gerar o resumo. A leitura do artigo não foi afetada.</string>
+
+    <!-- Sharing -->
+    <string name="action_share">Compartilhar</string>
+    <string name="share_chooser_title">Compartilhar artigo</string>
+    <string name="share_ai_action">Compartilhar com resumo de IA</string>
+    <string name="share_without_summary">Compartilhar sem resumo</string>
+    <string name="ai_share_fallback_title">Resumo de IA indisponível</string>
+    <string name="ai_share_fallback_message">Não foi possível gerar o resumo deste artigo. Você ainda pode compartilhar o título e o endereço original.</string>
 </resources>

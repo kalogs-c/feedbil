@@ -398,32 +398,49 @@ picker is deferred, and summary reuse is left for Milestone 7.
 
 ### Milestone 7 — Sharing
 
-**Status:** Not started.
+**Status:** Completed (2026-11-19). All 178 JVM tests pass and both debug
+and release APKs assemble. Real share targets and on-device inference remain
+unverified on hardware (see `LIMITATIONS.md`).
 
 **Work**
 
-- Add a share action at the top of the article screen.
-- Present two explicit actions:
-  1. **Share with AI:** generate a concise summary focused on the
-     article's main point and append the original source URL.
+- [x] Add a share action at the top of the article screen.
+- [x] Present two explicit actions:
+  1. **Share with AI:** reuse a generated summary or generate one on
+     device, then append the original source URL.
   2. **Normal share:** share the article title and original source URL.
-- Use the Android sharing mechanism agreed for the MVP.
-- Define behavior when AI is unavailable or generation fails.
-- Ensure the source URL is included and distinguish generated summary
-  text from source material.
+- [x] Use the Android sharing mechanism agreed for the MVP (plain
+  `ACTION_SEND` and the system chooser).
+- [x] Define behavior when AI is unavailable or generation fails: a
+  dismissible dialog offers normal share and, when relevant, model download.
+- [x] Include the validated source URL in both share texts and keep the
+  "Resumo gerado por IA" label on the article screen. The shared AI text
+  deliberately has no label (approved override — see `DECISIONS.md`).
 
 **Acceptance criteria**
 
-- Both share options are understandable and work with common Android
-  share targets.
-- Normal share does not invoke AI.
-- AI share includes a short summary and source URL.
-- AI failure provides a useful fallback or error path without losing
-  the article.
-- No share action silently sends content to a remote AI service.
+- [x] Both share options produce plain text for the system chooser and use
+  common Android share targets (share text and ViewModel share events are
+  covered by JVM tests; the chooser/intent path itself has no device or UI
+  test).
+- [x] Normal share does not invoke AI (verified in
+  `ArticleShareViewModelTest`).
+- [x] AI share includes a short summary and source URL, reusing an existing
+  summary or generating one on demand (verified in
+  `ArticleShareViewModelTest`).
+- [x] AI failure provides a useful fallback without losing the article
+  (verified in `ArticleShareViewModelTest`).
+- [x] No share action sends content to a remote AI service: AI sharing
+  reuses the M6 on-device inference path.
+- [x] 178 JVM tests pass on Windows (2026-11-19).
 
-**Decision gate** — Resolve exact share text format, AI reuse/caching
-behavior, fallback behavior, and Android Sharesheet integration.
+**Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): plain
+`ACTION_SEND` + `Intent.createChooser()` with `text/plain`; a top-bar share
+icon with a two-item dropdown; in-memory summary reuse with on-demand
+generation when needed; a clear fallback dialog offering normal share and
+never an automatic model download; normal text of `title` then `url`, AI text
+of `summary` then a blank line then `url`, with no generated-content marker
+in the shared text as an explicit override.
 
 ### Milestone 8 — Quality, accessibility, and MVP hardening
 

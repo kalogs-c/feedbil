@@ -2,26 +2,21 @@ package com.kalogsc.feedbil.ui.articles
 
 import com.kalogsc.feedbil.MainDispatcherRule
 import com.kalogsc.feedbil.ai.ArticleSummarizer
-import com.kalogsc.feedbil.ai.ModelManager
+import com.kalogsc.feedbil.ai.FakeModelManager
+import com.kalogsc.feedbil.ai.FakeSummarizer
 import com.kalogsc.feedbil.ai.ModelState
 import com.kalogsc.feedbil.ai.SummaryError
-import com.kalogsc.feedbil.ai.SummaryInput
 import com.kalogsc.feedbil.ai.SummaryResult
 import com.kalogsc.feedbil.domain.model.Article
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 class ArticleSummaryViewModelTest {
 
@@ -161,35 +156,6 @@ class ArticleSummaryViewModelTest {
     private suspend fun ArticleDetailViewModel.awaitState(
         predicate: (ArticleDetailUiState) -> Boolean,
     ): ArticleDetailUiState = withTimeout(AWAIT_TIMEOUT_MS) { uiState.first(predicate) }
-
-    private class FakeSummarizer(
-        var result: SummaryResult = SummaryResult.Success("Resumo."),
-    ) : ArticleSummarizer {
-        var calls = 0
-        var lastInput: SummaryInput? = null
-
-        override suspend fun summarize(input: SummaryInput): SummaryResult {
-            calls++
-            lastInput = input
-            return result
-        }
-    }
-
-    private class FakeModelManager(initial: ModelState) : ModelManager(
-        filesDir = File("."),
-        httpClient = OkHttpClient.Builder().build(),
-    ) {
-        private val flow = MutableStateFlow(initial)
-        override val state: StateFlow<ModelState> = flow.asStateFlow()
-        var downloadCalls = 0
-
-        override suspend fun download() {
-            if (flow.value is ModelState.Downloading || flow.value is ModelState.Ready) return
-            downloadCalls++
-            flow.value = ModelState.Downloading(0, 1)
-            flow.value = ModelState.Ready
-        }
-    }
 
     private companion object {
         const val AWAIT_TIMEOUT_MS = 5_000L

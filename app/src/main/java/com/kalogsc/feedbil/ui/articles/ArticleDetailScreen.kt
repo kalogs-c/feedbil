@@ -1,5 +1,6 @@
 package com.kalogsc.feedbil.ui.articles
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,30 +34,40 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import coil3.compose.AsyncImage
 import com.kalogsc.feedbil.R
 import com.kalogsc.feedbil.ai.ModelState
 import com.kalogsc.feedbil.ai.SummaryError
 import com.kalogsc.feedbil.domain.HttpUrlValidator
+import com.kalogsc.feedbil.domain.ShareTextBuilder
 import com.kalogsc.feedbil.domain.model.Article
 import com.kalogsc.feedbil.ui.common.formatDateTime
 import com.kalogsc.feedbil.ui.theme.FeedbilTheme
+import kotlinx.coroutines.flow.collect
 
 @Composable
 fun ArticleDetailRoute(
@@ -60,6 +75,26 @@ fun ArticleDetailRoute(
     onBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val chooserTitle = stringResource(R.string.share_chooser_title)
+    val untitled = stringResource(R.string.article_untitled)
+
+    // Share events are one-shot: the chooser is opened once per action and is
+    // not reopened on recomposition or when returning from the share sheet.
+    // Collection is limited to RESUMED so a slow inference finishing while the
+    // app is backgrounded cannot start an activity from the background.
+    LaunchedEffect(viewModel, lifecycleOwner, chooserTitle, untitled) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.shareContent.collect { content ->
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, ShareTextBuilder.build(content, untitled))
+                }
+                runCatching { context.startActivity(Intent.createChooser(intent, chooserTitle)) }
+            }
+        }
+    }
 
     ArticleDetailScreen(
         state = state,
@@ -67,6 +102,9 @@ fun ArticleDetailRoute(
         onRetry = viewModel::retry,
         onSummarize = viewModel::summarize,
         onDownloadModel = viewModel::downloadModel,
+        onShareNormal = viewModel::shareNormal,
+        onShareAi = viewModel::shareWithAi,
+        onDismissAiShareFallback = viewModel::dismissAiShareFallback,
     )
 }
 
@@ -78,8 +116,14 @@ fun ArticleDetailScreen(
     onRetry: () -> Unit,
     onSummarize: () -> Unit,
     onDownloadModel: () -> Unit,
+    onShareNormal: () -> Unit,
+    onShareAi: () -> Unit,
+    onDismissAiShareFallback: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val sourceUrl = remember(state.article) {
+        state.article?.link?.let(HttpUrlValidator::sanitize)
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -91,6 +135,11 @@ fun ArticleDetailScreen(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
+                    }
+                },
+                actions = {
+                    if (sourceUrl != null) {
+                        ShareMenu(onShareNormal = onShareNormal, onShareAi = onShareAi)
                     }
                 },
             )
@@ -140,6 +189,7 @@ fun ArticleDetailScreen(
 
                     state.article != null -> ArticleContent(
                         article = state.article,
+                        sourceUrl = sourceUrl,
                         state = state,
                         onSummarize = onSummarize,
                         onDownloadModel = onDownloadModel,
@@ -147,18 +197,97 @@ fun ArticleDetailScreen(
                 }
             }
         }
+
+        if (state.showAiShareFallback) {
+            AiShareFallbackDialog(
+                modelState = state.modelState,
+                onDismiss = onDismissAiShareFallback,
+                onShareNormal = onShareNormal,
+                onDownloadModel = onDownloadModel,
+            )
+        }
     }
+}
+
+@Composable
+private fun ShareMenu(
+    onShareNormal: () -> Unit,
+    onShareAi: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    IconButton(onClick = { expanded = true }) {
+        Icon(
+            imageVector = Icons.Filled.Share,
+            contentDescription = stringResource(R.string.action_share),
+        )
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.action_share)) },
+            onClick = {
+                expanded = false
+                onShareNormal()
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.share_ai_action)) },
+            onClick = {
+                expanded = false
+                onShareAi()
+            },
+        )
+    }
+}
+
+@Composable
+private fun AiShareFallbackDialog(
+    modelState: ModelState,
+    onDismiss: () -> Unit,
+    onShareNormal: () -> Unit,
+    onDownloadModel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.ai_share_fallback_title)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.ai_share_fallback_message))
+                if (modelState is ModelState.NotDownloaded || modelState is ModelState.Failed) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            onDismiss()
+                            onDownloadModel()
+                        },
+                    ) {
+                        Text(stringResource(R.string.ai_summary_download_button))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            // shareNormal() clears the fallback state, so the dialog closes itself.
+            TextButton(onClick = onShareNormal) {
+                Text(stringResource(R.string.share_without_summary))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_close))
+            }
+        },
+    )
 }
 
 @Composable
 private fun ArticleContent(
     article: Article,
+    sourceUrl: String?,
     state: ArticleDetailUiState,
     onSummarize: () -> Unit,
     onDownloadModel: () -> Unit,
 ) {
     val blocks = remember(article) { ArticleContentFormatter.format(article) }
-    val sourceUrl = remember(article) { HttpUrlValidator.sanitize(article.link) }
     val uriHandler = LocalUriHandler.current
     val imageDescription = stringResource(R.string.article_detail_image)
 
@@ -389,6 +518,9 @@ private fun ArticleDetailScreenPreview() {
             onRetry = {},
             onSummarize = {},
             onDownloadModel = {},
+            onShareNormal = {},
+            onShareAi = {},
+            onDismissAiShareFallback = {},
         )
     }
 }
