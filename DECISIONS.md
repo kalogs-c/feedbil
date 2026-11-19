@@ -625,7 +625,8 @@ Gemma 4 is supported at this runtime version (its README at tag v0.16.1 shows
 
 **AI contract:** The entire feed-provided text is used (HTML stripped by the
 M5 sanitizer, `contentHtml` preferred over `description`); there is no
-truncation yet, and the user asked to tune it after real use. Output is pt-BR,
+dedicated AI truncation yet, but the M5 sanitizer's existing 200,000-character
+cap still applies. The user asked to tune limits after real use. Output is pt-BR,
 bounded to ~200 tokens (roughly 2–3 sentences), uses low-temperature sampling
 and a system instruction that forbids invented facts, markdown and preambles,
 and explicitly treats article text as data so embedded instructions are
@@ -633,10 +634,14 @@ ignored. Output is always labeled "Resumo gerado por IA". The summary lives in
 ViewModel memory only; reuse/caching for sharing is Milestone 7's decision.
 
 **Consequences:** An engine is created lazily on the first summary and reused
-afterwards, serialized by a mutex; all native work runs on a background
-dispatcher. Long articles may exceed the effective context and surface a
-specific error rather than a crash. Reading, share and feed features do not
-depend on the model being present.
+afterwards, serialized by a mutex; generation uses the runtime's async Flow so
+leaving the screen can cancel it via `cancelProcess()`, and native `Error`s
+(such as `UnsatisfiedLinkError` on 32-bit ABIs) are caught and mapped to a
+typed error rather than crashing. The `file` domain is excluded from Android
+Auto Backup in both backup rule files so the ~2.59 GB model is never backed up;
+the local database is still backed up. Long articles may exceed the effective
+context and surface a specific error rather than a crash. Reading, share and
+feed features do not depend on the model being present.
 
 **Deferred:** model selection UI, persistent summaries, background download,
 and GPU/NPU backends.

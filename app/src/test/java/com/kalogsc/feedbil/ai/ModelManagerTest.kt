@@ -82,6 +82,18 @@ class ModelManagerTest {
     }
 
     @Test
+    fun `a valid file appearing after a failure recovers the ready state`() = runBlocking {
+        val manager = manager(code = 503)
+        manager.download()
+        assertTrue(manager.state.first() is ModelState.Failed)
+        manager.modelFile.writeText(CONTENT)
+
+        manager.download()
+
+        assertEquals(ModelState.Ready, manager.state.first())
+    }
+
+    @Test
     fun `an existing file of the expected size is treated as ready`() = runBlocking {
         val manager = manager()
         manager.modelFile.writeText(CONTENT)

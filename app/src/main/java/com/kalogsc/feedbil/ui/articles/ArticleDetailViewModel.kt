@@ -65,15 +65,11 @@ class ArticleDetailViewModel(
 
     fun downloadModel() {
         val manager = modelManager ?: return
-        if (_uiState.value.modelState is ModelState.Downloading) return
+        // The manager owns the "already downloading" guard against its own state.
         viewModelScope.launch { manager.download() }
     }
 
-    fun summarize() = generateSummary()
-
-    fun retrySummary() = generateSummary()
-
-    private fun generateSummary() {
+    fun summarize() {
         val current = _uiState.value
         val activeSummarizer = summarizer
         if (activeSummarizer == null || current.summaryLoading || current.modelState !is ModelState.Ready) {

@@ -6,20 +6,20 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.LiteRtLmJniException
 import com.google.ai.edge.litertlm.SamplerConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * On-device summarizer backed by LiteRT-LM. The engine is expensive to load, so
- * one instance is kept for the lifetime of this object and reused; the mutex
- * keeps native calls serialized. All native work runs on a background
- * dispatcher and no article text ever leaves the device.
+ * On-device summarizer backed by LiteRT-LM. The engine is expensive to load,
+ * so one instance is kept for the lifetime of this object and reused; the
+ * mutex keeps native calls serialized. Native work runs off the main thread
+ * and no article text ever leaves the device.
  */
 class LiteRtArticleSummarizer(
     private val modelPath: String,
@@ -30,12 +30,14 @@ class LiteRtArticleSummarizer(
 
     override suspend fun summarize(input: SummaryInput): SummaryResult = mutex.withLock {
         withContext(Dispatchers.Default) {
+            var phase = Phase.LOADING_MODEL
             var conversation: Conversation? = null
             try {
                 if (!File(modelPath).isFile) {
                     return@withContext SummaryResult.Failure(SummaryError.MODEL_UNAVAILABLE)
                 }
-                val activeEngine = engine ?: createEngine()
+                val activeEngine = engine ?: createEngine().also { engine = it }
+                phase = Phase.GENERATING
                 conversation = activeEngine.createConversation(
                     ConversationConfig(
                         systemInstruction = Contents.of(input.systemInstruction),
@@ -43,8 +45,15 @@ class LiteRtArticleSummarizer(
                         maxOutputToken = MAX_OUTPUT_TOKENS,
                     ),
                 )
-                val text = conversation.sendMessage(input.prompt).toString().trim()
-                val cleaned = cleanOutput(text)
+                val response = StringBuilder()
+                try {
+                    conversation.sendMessageAsync(input.prompt).collect { response.append(it) }
+                } catch (cancellation: CancellationException) {
+                    // The runtime's Flow does not cancel native generation on its own.
+                    runCatching { conversation.cancelProcess() }
+                    throw cancellation
+                }
+                val cleaned = cleanOutput(response.toString())
                 if (cleaned.isEmpty()) {
                     SummaryResult.Failure(SummaryError.EMPTY_OUTPUT)
                 } else {
@@ -52,12 +61,11 @@ class LiteRtArticleSummarizer(
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (error: LiteRtLmJniException) {
-                SummaryResult.Failure(classify(error))
-            } catch (error: Exception) {
-                SummaryResult.Failure(classify(error))
+            } catch (error: Throwable) {
+                // Errors (native ABI, OOM) are as real a failure here as exceptions.
+                SummaryResult.Failure(classify(error, phase))
             } finally {
-                conversation?.close()
+                conversation?.let { runCatching { it.close() } }
             }
         }
     }
@@ -67,29 +75,24 @@ class LiteRtArticleSummarizer(
         try {
             created.initialize()
         } catch (error: Throwable) {
-            created.close()
+            // Engine.close() throws if initialization failed, so guard it to keep
+            // the original error (and the MODEL_UNAVAILABLE mapping) intact.
+            if (created.isInitialized()) runCatching { created.close() }
             throw error
         }
-        engine = created
         return created
     }
 
-    /** Called from the app when it is being torn down; safe to call repeatedly. */
-    fun close() {
-        engine?.close()
-        engine = null
+    private fun classify(error: Throwable, phase: Phase): SummaryError = when {
+        phase == Phase.LOADING_MODEL -> SummaryError.MODEL_UNAVAILABLE
+        error.isTooLongInput() -> SummaryError.INPUT_TOO_LONG
+        else -> SummaryError.INFERENCE_FAILED
     }
 
-    private fun classify(error: Throwable): SummaryError {
-        val message = error.message.orEmpty()
-        return when {
-            message.contains("context", ignoreCase = true) ||
-                message.contains("token", ignoreCase = true) ||
-                message.contains("too long", ignoreCase = true) ||
-                message.contains("exceed", ignoreCase = true) -> SummaryError.INPUT_TOO_LONG
-
-            error is LiteRtLmJniException && engine == null -> SummaryError.MODEL_UNAVAILABLE
-            else -> SummaryError.INFERENCE_FAILED
+    private fun Throwable.isTooLongInput(): Boolean {
+        val message = message.orEmpty()
+        return listOf("context", "token", "too long", "exceed").any {
+            message.contains(it, ignoreCase = true)
         }
     }
 
@@ -106,12 +109,15 @@ class LiteRtArticleSummarizer(
             }
         }
         return cleaned.trim('"').trim()
-            .replace(Regex("\\*\\*"), "")
-            .replace(Regex("\\n{3,}"), "\n\n")
+            .replace("**", "")
+            .replace(MULTIPLE_NEWLINES, "\n\n")
     }
+
+    private enum class Phase { LOADING_MODEL, GENERATING }
 
     private companion object {
         const val MAX_OUTPUT_TOKENS = 200
         val SUMMARY_PREFIXES = listOf("Resumo:", "Resumo —", "Summary:")
+        val MULTIPLE_NEWLINES = Regex("\\n{3,}")
     }
 }

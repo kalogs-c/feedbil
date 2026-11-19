@@ -76,8 +76,8 @@ fun ArticleDetailScreen(
     state: ArticleDetailUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
-    onSummarize: () -> Unit = {},
-    onDownloadModel: () -> Unit = {},
+    onSummarize: () -> Unit,
+    onDownloadModel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -348,7 +348,6 @@ private fun SummarySection(
     }
 }
 
-@Composable
 private fun summaryErrorMessage(error: SummaryError): Int = when (error) {
     SummaryError.EMPTY_CONTENT -> R.string.ai_summary_error_empty
     SummaryError.EMPTY_OUTPUT -> R.string.ai_summary_error_empty_output
@@ -388,6 +387,8 @@ private fun ArticleDetailScreenPreview() {
             ),
             onBack = {},
             onRetry = {},
+            onSummarize = {},
+            onDownloadModel = {},
         )
     }
 }

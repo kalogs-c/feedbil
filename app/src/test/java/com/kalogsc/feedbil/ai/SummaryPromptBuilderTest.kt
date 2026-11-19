@@ -39,6 +39,6 @@ class SummaryPromptBuilderTest {
         )
 
         assertFalse(input.prompt.contains("Título:"))
-        assertEquals(true, input.prompt.startsWith("Texto do artigo:"))
+        assertTrue(input.prompt.startsWith("Texto do artigo:"))
     }
 }

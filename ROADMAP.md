@@ -354,9 +354,10 @@ for all links; images are a required feature and are no longer stripped.
 
 ### Milestone 6 — On-device AI summary
 
-**Status:** Implemented 2026-11-19. All 153 JVM tests pass and debug/release
-APKs assemble. On-device inference with the real 2.59 GB model has **not**
-been run yet; that check is pending and is not claimed as passed.
+**Status:** Implemented 2026-11-19; review fixes applied the same day. All 157
+JVM tests pass and debug/release APKs assemble. On-device inference with the
+real 2.59 GB model has **not** been run yet; that check is pending and is not
+claimed as passed.
 
 **Work**
 
@@ -386,7 +387,7 @@ been run yet; that check is pending and is not claimed as passed.
 - [x] Output is presented as generated content, not as verified fact
   ("Resumo gerado por IA" label; prompt forbids fabrication).
 - [x] Model/runtime behavior and device requirements are documented.
-- [x] 153 JVM tests pass on Windows (2026-11-19).
+- [x] 157 JVM tests pass on Windows (2026-11-19).
 
 **Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): LiteRT-LM Kotlin API
 pinned to 0.16.1 for Kotlin 2.2 compatibility; fixed public Gemma 4 E2B model

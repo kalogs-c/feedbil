@@ -22,7 +22,9 @@ object SummaryInputBuilder {
         val html = article.contentHtml?.takeIf { it.isNotBlank() }
             ?: article.description?.takeIf { it.isNotBlank() }
             ?: return null
-        val text = ArticleContentFormatter.parse(html)
+        // The M5 formatter renders comments as plain text; strip them here so a
+        // hidden instruction in a feed cannot reach the model.
+        val text = ArticleContentFormatter.parse(html.replace(HTML_COMMENT, ""))
             .filterIsInstance<ArticleBlock.Paragraph>()
             .joinToString("\n\n") { it.text.text }
             .trim()
@@ -31,4 +33,6 @@ object SummaryInputBuilder {
         val title = article.title?.trim()?.takeIf { it.isNotEmpty() }
         return PreparedSummaryInput(title = title, text = text)
     }
+
+    private val HTML_COMMENT = Regex("(?s)<!--.*?-->")
 }

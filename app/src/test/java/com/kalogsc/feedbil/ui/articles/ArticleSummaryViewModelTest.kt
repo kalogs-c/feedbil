@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -64,6 +65,17 @@ class ArticleSummaryViewModelTest {
     }
 
     @Test
+    fun `repeated download taps are serialized by the manager`() = runBlocking {
+        val model = FakeModelManager(ModelState.NotDownloaded)
+        val viewModel = viewModel(model = model)
+
+        viewModel.downloadModel()
+        viewModel.downloadModel()
+
+        assertEquals(1, model.downloadCalls)
+    }
+
+    @Test
     fun `a successful summary is shown with the prepared prompt`() = runBlocking {
         val summarizer = FakeSummarizer(SummaryResult.Success("Resumo gerado localmente."))
         val viewModel = viewModel(summarizer = summarizer)
@@ -75,7 +87,7 @@ class ArticleSummaryViewModelTest {
         assertEquals("Resumo gerado localmente.", state.summary)
         assertNull(state.summaryError)
         assertEquals(1, summarizer.calls)
-        assertEquals(true, summarizer.lastInput?.prompt?.contains("Texto do artigo."))
+        assertTrue(summarizer.lastInput!!.prompt.contains("Texto do artigo."))
     }
 
     @Test
@@ -139,7 +151,7 @@ class ArticleSummaryViewModelTest {
         viewModel.awaitState { it.summaryError != null }
 
         summarizer.result = SummaryResult.Success("Resumo após nova tentativa.")
-        viewModel.retrySummary()
+        viewModel.summarize()
 
         val state = viewModel.awaitState { it.summary != null }
         assertEquals("Resumo após nova tentativa.", state.summary)
@@ -172,7 +184,9 @@ class ArticleSummaryViewModelTest {
         var downloadCalls = 0
 
         override suspend fun download() {
+            if (flow.value is ModelState.Downloading || flow.value is ModelState.Ready) return
             downloadCalls++
+            flow.value = ModelState.Downloading(0, 1)
             flow.value = ModelState.Ready
         }
     }

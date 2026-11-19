@@ -2,6 +2,8 @@ package com.kalogsc.feedbil.ai
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +18,7 @@ sealed interface ModelState {
     data object NotDownloaded : ModelState
     data class Downloading(val bytes: Long, val total: Long) : ModelState
     data object Ready : ModelState
-    data class Failed(val detail: String?) : ModelState
+    data object Failed : ModelState
 }
 
 /**
@@ -47,8 +49,12 @@ open class ModelManager(
     fun isAvailable(): Boolean = modelFile.isFile && modelFile.length() == expectedBytes
 
     open suspend fun download() {
-        if (_state.value is ModelState.Downloading || isAvailable()) return
-        _state.value = ModelState.Downloading(0, EXPECTED_BYTES)
+        if (_state.value is ModelState.Downloading) return
+        if (isAvailable()) {
+            _state.value = ModelState.Ready
+            return
+        }
+        _state.value = ModelState.Downloading(0, expectedBytes)
         val partial = File(modelFile.parentFile, "$MODEL_FILE_NAME.part")
 
         withContext(Dispatchers.IO) {
@@ -64,6 +70,9 @@ open class ModelManager(
                             val buffer = ByteArray(BUFFER_SIZE)
                             var bytes = 0L
                             while (true) {
+                                // Blocking socket reads do not observe coroutine
+                                // cancellation on their own; check between chunks.
+                                currentCoroutineContext().ensureActive()
                                 val read = input.read(buffer)
                                 if (read < 0) break
                                 output.write(buffer, 0, read)
@@ -80,12 +89,12 @@ open class ModelManager(
                 if (!partial.renameTo(modelFile)) throw IOException("Could not store the model file")
                 _state.value = ModelState.Ready
             } catch (cancellation: CancellationException) {
-                partial.delete()
                 _state.value = ModelState.NotDownloaded
                 throw cancellation
             } catch (error: Exception) {
+                _state.value = ModelState.Failed
+            } finally {
                 partial.delete()
-                _state.value = ModelState.Failed(error.message?.take(160))
             }
         }
     }

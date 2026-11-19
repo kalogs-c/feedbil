@@ -57,16 +57,18 @@ issues only; it is not a roadmap. Update it as milestones complete.
   1.7 GB peak RAM on CPU. A supported 64-bit Android device with enough free
   storage and memory is required; smaller/older devices may fail to load it.
   The APK does not include the model.
-- Model download runs in the foreground with a progress bar: leaving the app
-  or screen cancels it, and the partial file is discarded. A background
-  download with a notification is deferred.
+- Model download runs in the foreground with a progress bar. Cancellation is
+  checked between downloaded chunks, so leaving the app or screen discards the
+  partial file, but the current network read may still finish first. A
+  background download with a notification is deferred.
 - A single model is hard-coded. There is no model selection screen or download
   of alternative models in the MVP, even though the app is structurally ready
   for one.
-- The whole feed-provided article text is sent to the model with no truncation.
-  Very long articles may exceed the effective context window; the app reports
-  a specific error instead of a summary, and the input limit can be tuned
-  after real-device use.
+- The whole feed-provided article text is used without a dedicated AI input
+  limit. The M5 HTML sanitizer still caps input at 200,000 characters, so
+  extremely long articles are shortened at that point, and longer articles may
+  exceed the model's effective context window. The app reports a specific error
+  instead of a summary; both limits can be tuned after real-device use.
 - Generated summaries are stored only in the article screen's ViewModel. They
   are lost when the screen is closed; no summary is persisted or reused for AI
   sharing yet (Milestone 7).
@@ -78,4 +80,8 @@ issues only; it is not a roadmap. Update it as milestones complete.
   first time. Inference itself is offline; the feed text is never uploaded.
   The expected byte count is pinned in `ModelManager`; if the publisher
   replaces the model file, that constant must be updated or downloads will be
-  rejected as the wrong size.
+  rejected as the wrong size. Integrity checking is size-only, not a checksum:
+  a corrupted file of exactly the pinned size would pass.
+- The LiteRT-LM AAR ships 64-bit native libraries only (`arm64-v8a`, `x86_64`).
+  On a 32-bit device the model can still download, but summary generation fails
+  with a typed error instead of crashing the app.
