@@ -859,3 +859,53 @@ both `ic_launcher` and `ic_launcher_round`; the template WebP fallbacks and
 template vector foreground were removed. Visual rendering by a launcher
 and the splash screen must be confirmed on a device by the user; the build,
 resource packaging, and unit tests can only prove the resources are valid.
+
+## 2026-11-19 — GitHub Releases distribution with per-commit builds
+
+**Decision:** Publish a signed release APK to GitHub Releases on every push
+to `main` using `.github/workflows/release.yml`. Each run creates a new
+prerelease tagged `build-<run number>` with an attached
+`feedbil-<run number>.apk`. CI injects `versionCode = <run number>` and
+`versionName = 1.0.<run number>` through Gradle properties; local builds
+keep `1` / `1.0`. Unit tests must pass before publishing. The signing
+keystore (base64) and its passwords live in repository Actions secrets and
+are decoded into `$RUNNER_TEMP` for the build; no key is committed. Runs
+are queued rather than cancelled so every commit produces a release.
+
+**Alternatives considered (cadence):**
+
+1. One rolling "latest" release whose APK asset is replaced on every push
+   — less noise, but the version never changes, so Android update checks
+   and release-based updaters cannot detect a new build.
+2. Tag-triggered releases only — deliberate, named versions, but does not
+   satisfy "update on every commit".
+3. New prerelease per push with the run number in the tag (chosen).
+
+**Alternatives considered (signing key):**
+
+1. Commit the keystore — simplest and reproducible for sideloading, but
+   anyone could sign apps with the project's identity.
+2. Generate a fresh key each run — no secrets, but users would have to
+   uninstall before every update because the signature changes.
+3. Actions secrets (chosen) — key stays out of git; requires an offline
+   backup because losing it breaks the update path.
+
+**Alternatives considered (versioning):**
+
+1. Keep `1.0` / versionCode 1 fixed — no build-script change, but every
+   build looks identical to Android.
+2. Inject from the Actions run number (chosen) — monotonic versionCode
+   with no source commit needed, so the workflow cannot create a commit
+   loop.
+
+**Rationale:** The app is local-only and has no Play presence, so a signed
+APK attached to a GitHub Release is the smallest usable distribution path.
+Automated tests gate publication because a failed build must not replace a
+working download. Per-run versioning gives users a real update signal
+without writing to the repository.
+
+**Consequences:** Releases accumulate over time; pruning is not part of
+this decision. The key is self-signed rather than Play-managed. If the
+secrets are lost or rotated, users must uninstall before installing a
+build with a different signature. Linux CI builds and end-to-end release
+creation are unverified until the first workflow run completes.

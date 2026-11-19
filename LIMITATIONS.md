@@ -109,3 +109,7 @@ issues only; it is not a roadmap. Update it as milestones complete.
   announcements, airplane mode, network interruption, real feeds, share
   targets, and AI responsiveness) were run by the user on a physical device
   and all passed (2026-11-19).
+- Automated GitHub Releases are development snapshots built on every push to
+  `main`. They are signed with a self-signed key held in Actions secrets,
+  not reviewed by Google Play. If that key is lost or rotated, users must
+  uninstall before installing a build signed with a different key.

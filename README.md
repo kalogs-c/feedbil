@@ -1,9 +1,19 @@
 # Feedbil
 
+[![Release](https://github.com/kalogs-c/feedbil/actions/workflows/release.yml/badge.svg)](https://github.com/kalogs-c/feedbil/actions/workflows/release.yml)
+
 Local-first Android RSS reader built with Kotlin and Jetpack Compose.
 No account, no cloud sync, no app-owned backend: feeds and articles are
 stored on the device, and AI summaries are generated on-device with
 LiteRT.
+
+## Downloads
+
+Signed development builds are published to
+[GitHub Releases](https://github.com/kalogs-c/feedbil/releases) on every
+push to `main`. Download the attached `feedbil-<build>.apk` and install it
+directly on an Android 8.0+ device. These are automated, unreviewed
+snapshots, not a Google Play release.
 
 The MVP scope, milestones, and acceptance criteria are defined in
 [ROADMAP.md](ROADMAP.md). Read it before implementing features.

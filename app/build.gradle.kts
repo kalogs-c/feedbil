@@ -4,6 +4,18 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// CI supplies a keystore through environment variables; local builds stay unsigned.
+val releaseStoreFile = System.getenv("FEEDBIL_RELEASE_STORE_FILE")
+val releaseStorePassword = System.getenv("FEEDBIL_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = System.getenv("FEEDBIL_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("FEEDBIL_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.kalogsc.feedbil"
     compileSdk {
@@ -14,14 +26,28 @@ android {
         applicationId = "com.kalogsc.feedbil"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = providers.gradleProperty("feedbil.versionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("feedbil.versionName").orNull ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
