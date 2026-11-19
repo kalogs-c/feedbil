@@ -21,25 +21,25 @@ The MVP scope, milestones, and acceptance criteria are defined in
 - JDK: provisioned automatically by the Gradle wrapper via the
   `org.gradle.toolchains.foojay-resolver-convention` plugin (toolchain
   version 25, see `gradle/gradle-daemon-jvm.properties`).
-- Android SDK with:
-  - `platforms;android-37.0` (compileSdk/targetSdk 37)
-  - `build-tools;36.0.0`
-  - `platform-tools`
-  - Package ids may differ between channels; check
-    `sdkmanager --list | grep -E "platforms/android-37|build-tools;36"`.
-- `local.properties` (not committed) must point `sdk.dir` at the SDK.
-  Note: an SDK installed on Windows is **not** usable for Linux builds
-  (build-tools/aapt are Windows binaries); install a Linux SDK instead.
+- Android SDK installed on Windows (typically via Android Studio) with
+  the API 37 platform and build-tools. Android Studio regenerates
+  `local.properties` (not committed) with `sdk.dir` pointing at it.
+- The project lives on the Windows filesystem (`C:\feedbil`). Build and
+  run from Windows (`gradlew.bat` or Android Studio). Editing from WSL
+  works, but Linux builds are not supported.
 
 ## Build and test
 
-```sh
-./gradlew :app:assembleDebug      # build the debug APK
-./gradlew :app:testDebugUnitTest  # run local unit tests
+From Windows (PowerShell or cmd):
+
+```powershell
+.\gradlew.bat :app:assembleDebug      # build the debug APK
+.\gradlew.bat :app:testDebugUnitTest  # run local unit tests
 ```
 
-Instrumented tests (`./gradlew :app:connectedDebugAndroidTest`) require a
-running emulator or a physical device with USB debugging enabled.
+Instrumented tests (`.\gradlew.bat :app:connectedDebugAndroidTest`)
+require a running emulator or a physical device with USB debugging
+enabled.
 
 ## Project layout
 

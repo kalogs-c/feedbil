@@ -124,16 +124,17 @@ next milestone.
 
 ### Milestone 1 — Project foundation
 
-**Status:** Completed except for device/emulator launch verification
-(app builds and unit tests pass on the dev machine; launch is verified
-on the Windows side) and the pending baseline discussion noted in
-`DECISIONS.md`.
+**Status:** Completed except for Windows re-verification and
+device/emulator launch verification. The project lived on the WSL
+filesystem at inception; on 2026-11-18 it moved to `C:\feedbil` on
+Windows, so builds and tests must run on the Windows side
+(`gradlew.bat` or Android Studio).
 
 **Work**
 
-- [x] Create the Android project and verify it builds
-  (`./gradlew :app:assembleDebug`) and unit tests pass
-  (`./gradlew :app:testDebugUnitTest`) on the dev machine.
+- [x] Create the Android project and verify it builds and unit tests
+  pass (verified on Linux 2026-11-18, pre-move; re-verification on
+  Windows pending).
 - [x] Establish package naming (`com.kalogsc.feedbil`) and code style
   (`kotlin.code.style=official`).
 - [x] Add a minimal Compose app shell (`MainActivity` + `FeedbilTheme`).
@@ -153,8 +154,8 @@ on the Windows side) and the pending baseline discussion noted in
 
 **Acceptance criteria**
 
-- App compiles and unit tests pass on the dev machine (verified
-  2026-11-18).
+- App compiles and unit tests pass (verified 2026-11-18 on Linux,
+  pre-move; re-verification on Windows pending).
 - A basic screen renders in the agreed always-dark OLED theme; launch
   verification on a device/emulator is pending on the Windows side.
 - UI text is sourced from string resources (no hard-coded user-facing
