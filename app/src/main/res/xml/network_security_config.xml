@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Feeds are public, read-only content and many are still served over plain
+    HTTP. Cleartext is allowed on purpose (see DECISIONS.md and
+    LIMITATIONS.md); everything the app renders from a feed is treated as
+    untrusted input.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

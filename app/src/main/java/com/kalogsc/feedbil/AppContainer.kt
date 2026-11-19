@@ -5,6 +5,9 @@ import androidx.room.Room
 import com.kalogsc.feedbil.data.ArticleRepository
 import com.kalogsc.feedbil.data.FeedRepository
 import com.kalogsc.feedbil.data.local.FeedbilDatabase
+import com.kalogsc.feedbil.data.remote.FeedFetcher
+import com.kalogsc.feedbil.data.remote.FeedHttp
+import com.prof18.rssparser.RssParserBuilder
 
 /**
  * Manual dependency container (see `DECISIONS.md`). One instance is created by
@@ -21,6 +24,10 @@ class AppContainer(
     val feedRepository = FeedRepository(database.feedDao(), clock)
 
     val articleRepository = ArticleRepository(database, clock)
+
+    private val httpClient = FeedHttp.newClient()
+
+    val feedFetcher = FeedFetcher(RssParserBuilder(callFactory = httpClient).build())
 
     private companion object {
         const val DATABASE_NAME = "feedbil.db"
