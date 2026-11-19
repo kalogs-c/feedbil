@@ -1,4 +1,4 @@
-# feedbil
+# Feedbil
 
 Local-first Android RSS reader built with Kotlin and Jetpack Compose.
 No account, no cloud sync, no app-owned backend: feeds and articles are
