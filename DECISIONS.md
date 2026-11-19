@@ -305,6 +305,12 @@ failures are mapped to `FeedFetchResult` — `HttpError(code)`,
 `NotAFeed`, `Timeout`, `Network`, `InvalidUrl`, `Unknown` — and
 cancellation is rethrown so a closed screen cancels its request.
 
+**Correction (2026-11-19 review):** rssparser runs its download and parse in
+internal `SupervisorJob` coroutines that do not inherit the caller's `Job`.
+Cancellation is still rethrown, but it is observed only after the parser
+finishes, so closing a screen does not actually abort the request. Recorded in
+`LIMITATIONS.md`.
+
 ## 2026-11-19 — Strict add-feed validation before saving
 
 **Decision:** Adding a feed validates the name and URL locally, rejects

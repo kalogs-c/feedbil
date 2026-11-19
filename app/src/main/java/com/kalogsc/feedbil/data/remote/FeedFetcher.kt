@@ -7,6 +7,7 @@ import com.prof18.rssparser.model.RssChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.IOException
 import java.io.InterruptedIOException
 
@@ -25,12 +26,16 @@ class FeedFetcher(
     constructor(parser: RssParser) : this(parser::getRssChannel)
 
     suspend fun fetch(url: String): FeedFetchResult = withContext(Dispatchers.IO) {
+        // Use the same URL parser as the HTTP client. Without this, rssparser's
+        // "not a feed" IllegalArgumentException would look like a malformed URL.
+        if (url.toHttpUrlOrNull() == null) {
+            return@withContext FeedFetchResult.InvalidUrl
+        }
         try {
+            // rssparser dispatches its own parsing to Dispatchers.Default; this
+            // IO context keeps the surrounding fetch and error mapping off the main thread.
             val channel = fetchChannel(url)
-            FeedFetchResult.Success(
-                title = channel.title,
-                items = channel.items,
-            )
+            FeedFetchResult.Success(items = channel.items)
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Throwable) {
@@ -47,7 +52,9 @@ class FeedFetcher(
             is HttpException -> FeedFetchResult.HttpError(error.code)
             is RssParsingException -> FeedFetchResult.NotAFeed
             is InterruptedIOException -> FeedFetchResult.Timeout
-            is IllegalArgumentException -> FeedFetchResult.InvalidUrl
+            // fetch() already validated the URL, so an IllegalArgumentException
+            // here is rssparser rejecting the response body as not a feed.
+            is IllegalArgumentException -> FeedFetchResult.NotAFeed
             is IOException -> FeedFetchResult.Network
             else -> FeedFetchResult.Unknown
         }

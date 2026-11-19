@@ -11,6 +11,11 @@ issues only; it is not a roadmap. Update it as milestones complete.
   caching is implemented, so a manual refresh always uses the network.
 - Per-feed refresh failures are kept in memory for the current session. After
   a restart, only an old `lastFetchedAt` hints that a feed has been failing.
+- Cancelling a fetch (for example by leaving the add-feed screen) does not
+  abort the in-flight HTTP request. rssparser runs its download and parse in
+  internal coroutines with their own `Job`, so cancellation is observed only
+  after parsing finishes. The result is discarded, but the request keeps using
+  network resources until it completes.
 - Entries without a usable link are not stored. Titles are never invented: a
   missing title is shown as "Sem título".
 - Article images are loaded on demand from the URLs in the feed's HTML. Text

@@ -115,6 +115,24 @@ class FeedFormViewModelTest {
     }
 
     @Test
+    fun `a non-feed response is surfaced as not a feed`() = runBlocking {
+        fetchOutcome = {
+            throw IllegalArgumentException(
+                "The provided XML is not supported. Only RSS and Atom feeds are supported",
+            )
+        }
+        val viewModel = viewModel()
+        viewModel.onNameChange("Example")
+        viewModel.onUrlChange("https://example.com/rss")
+
+        viewModel.save()
+
+        val state = viewModel.awaitState { it.submitError != null }
+        assertEquals(FeedSubmitError.NotAFeed, state.submitError)
+        assertEquals(0, repository.count())
+    }
+
+    @Test
     fun `a valid feed is trimmed, verified, and stored`() = runBlocking {
         val viewModel = viewModel()
         viewModel.onNameChange("  Example Blog  ")
@@ -210,6 +228,7 @@ class FeedFormViewModelTest {
 
         val state = viewModel.awaitState { it.submitError != null }
         assertEquals(FeedSubmitError.FeedMissing, state.submitError)
+        assertFalse(state.isLoadingFeed)
     }
 
     private suspend fun FeedFormViewModel.awaitState(

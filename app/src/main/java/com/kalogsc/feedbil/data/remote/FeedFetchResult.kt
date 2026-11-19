@@ -14,7 +14,6 @@ sealed interface FeedFetchResult {
      * them into stored articles.
      */
     data class Success(
-        val title: String?,
         val items: List<RssItem>,
     ) : FeedFetchResult
 

@@ -59,7 +59,6 @@ class FeedRefreshServiceTest {
         val feed = feedRepository.add("Example", "https://example.com/rss")
         fetchOutcome = {
             FeedFetchResult.Success(
-                title = "Example",
                 items = listOf(
                     rssItem(link = "https://example.com/one", title = "One"),
                     rssItem(link = "https://example.com/two", title = "Two"),
@@ -83,7 +82,6 @@ class FeedRefreshServiceTest {
         fetchOutcome = { url ->
             if (url == good.url) {
                 FeedFetchResult.Success(
-                    title = "Good",
                     items = listOf(rssItem(link = "https://good.example.com/post")),
                 )
             } else {
@@ -108,7 +106,6 @@ class FeedRefreshServiceTest {
         val feed = feedRepository.add("Example", "https://example.com/rss")
         fetchOutcome = {
             FeedFetchResult.Success(
-                title = null,
                 items = listOf(rssItem(link = "https://example.com/one")),
             )
         }
@@ -127,7 +124,6 @@ class FeedRefreshServiceTest {
         val feed = feedRepository.add("Example", "https://example.com/rss")
         fetchOutcome = {
             FeedFetchResult.Success(
-                title = null,
                 items = (1..105).map { index ->
                     rssItem(link = "https://example.com/$index")
                 },
@@ -157,7 +153,7 @@ class FeedRefreshServiceTest {
                 ),
             ),
         )
-        fetchOutcome = { FeedFetchResult.Success(title = null, items = emptyList()) }
+        fetchOutcome = { FeedFetchResult.Success(items = emptyList()) }
 
         val summary = service().refreshAll()
 
@@ -172,7 +168,6 @@ class FeedRefreshServiceTest {
             val feed = feedRepository.add("Example", "https://example.com/rss")
             fetchOutcome = {
                 FeedFetchResult.Success(
-                    title = null,
                     items = listOf(
                         rssItem(title = "No link"),
                         rssItem(title = "Blank link", link = "   "),
@@ -200,7 +195,6 @@ class FeedRefreshServiceTest {
             delay(20)
             active -= 1
             FeedFetchResult.Success(
-                title = null,
                 items = listOf(rssItem(link = "$url/post")),
             )
         }
@@ -217,7 +211,7 @@ class FeedRefreshServiceTest {
         fetchOutcome = {
             calls += 1
             delay(20)
-            FeedFetchResult.Success(title = null, items = emptyList())
+            FeedFetchResult.Success(items = emptyList())
         }
         val service = service()
 

@@ -20,7 +20,7 @@ class FeedFetcherTest {
     private val url = "https://example.com/rss"
 
     @Test
-    fun `successful fetch reports the channel title and item count`() = runTest {
+    fun `successful fetch returns the parsed items`() = runTest {
         val fetcher = FeedFetcher {
             RssChannel(
                 title = "Example Blog",
@@ -35,7 +35,7 @@ class FeedFetcherTest {
             )
         }
 
-        assertEquals(FeedFetchResult.Success("Example Blog", emptyList()), fetcher.fetch(url))
+        assertEquals(FeedFetchResult.Success(emptyList()), fetcher.fetch(url))
     }
 
     @Test
@@ -83,11 +83,31 @@ class FeedFetcherTest {
     }
 
     @Test
-    fun `an unusable url is reported separately`() {
+    fun `an unusable url is rejected before fetching`() = runTest {
+        val fetcher = FeedFetcher { throw AssertionError("fetch must not be called") }
+
+        assertEquals(FeedFetchResult.InvalidUrl, fetcher.fetch("not a url"))
+    }
+
+    @Test
+    fun `a parser rejection is not a feed rather than an invalid url`() {
         assertEquals(
-            FeedFetchResult.InvalidUrl,
-            FeedFetcher.failureResult(IllegalArgumentException("invalid url")),
+            FeedFetchResult.NotAFeed,
+            FeedFetcher.failureResult(
+                IllegalArgumentException(
+                    "The provided XML is not supported. Only RSS and Atom feeds are supported",
+                ),
+            ),
         )
+    }
+
+    @Test
+    fun `a rejected response body is not a feed`() = runTest {
+        val fetcher = FeedFetcher {
+            throw IllegalArgumentException("The provided XML is not supported")
+        }
+
+        assertEquals(FeedFetchResult.NotAFeed, fetcher.fetch(url))
     }
 
     @Test

@@ -46,6 +46,13 @@ class FeedParsingTest {
     }
 
     @Test
+    fun `a website page is mapped to NotAFeed by the fetcher`() = runBlocking {
+        val fetcher = FeedFetcher { parser.parse(fixture("feeds/website_page.html")) }
+
+        assertEquals(FeedFetchResult.NotAFeed, fetcher.fetch("https://example.com/"))
+    }
+
+    @Test
     fun `malformed xml is reported as a parsing failure`() {
         assertThrows(RssParsingException::class.java) {
             runBlocking { parser.parse(fixture("feeds/malformed.xml")) }

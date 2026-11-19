@@ -194,7 +194,10 @@ class FeedFormViewModel(
         }
     }
 
+    /** Clears every busy flag so a failure never strands the form on a spinner. */
     private fun failWith(error: FeedSubmitError) {
-        _uiState.update { it.copy(isSaving = false, submitError = error) }
+        _uiState.update {
+            it.copy(isLoadingFeed = false, isSaving = false, submitError = error)
+        }
     }
 }
