@@ -55,12 +55,12 @@ enabled.
 Single-module app (`:app`), package `com.kalogsc.feedbil`:
 
 - `app/src/main/java/com/kalogsc/feedbil/MainActivity.kt` — app entry
-  point; hosts `ui/FeedbilNavHost.kt`, the three-destination navigation graph
+  point; hosts `ui/FeedbilNavHost.kt`, the four-destination navigation graph
 - `app/src/main/java/com/kalogsc/feedbil/FeedbilApplication.kt`,
   `AppContainer.kt` — manual dependency container and startup retention
 - `app/src/main/java/com/kalogsc/feedbil/ui/articles/` — combined article
-  list, refresh states, and its ViewModel; `ui/common/` holds pt-BR date
-  formatting
+  list, article detail screen, feed-HTML sanitizer, and their ViewModels;
+  `ui/common/` holds pt-BR date formatting
 - `app/src/main/java/com/kalogsc/feedbil/ui/feeds/` — feed list, add/edit
   form, and their ViewModels
 - `app/src/main/java/com/kalogsc/feedbil/domain/` — feed and article
@@ -81,7 +81,8 @@ schema change needs a migration, and there is no destructive fallback.
 ## Testing
 
 `testDebugUnitTest` covers domain rules, storage and migrations, feed
-fetching and mapping, refresh orchestration, validation, and all ViewModels.
+fetching and mapping, refresh orchestration, validation, article HTML
+sanitization, and all ViewModels.
 Storage, parser, refresh, and ViewModel tests use Robolectric, so they need
 no device; the first run downloads Robolectric's Android runtime jars. No
 test contacts a live feed: the parser runs against fixtures in

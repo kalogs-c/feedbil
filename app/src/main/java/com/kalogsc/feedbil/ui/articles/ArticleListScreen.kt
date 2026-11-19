@@ -1,6 +1,7 @@
 package com.kalogsc.feedbil.ui.articles
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,6 +67,7 @@ fun ArticleListRoute(
     viewModel: ArticleListViewModel,
     onOpenFeeds: () -> Unit,
     onAddFeed: () -> Unit,
+    onOpenArticle: (Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -76,6 +78,7 @@ fun ArticleListRoute(
         onRetryLoad = viewModel::retryLoad,
         onOpenFeeds = onOpenFeeds,
         onAddFeed = onAddFeed,
+        onOpenArticle = onOpenArticle,
     )
 }
 
@@ -88,6 +91,7 @@ fun ArticleListScreen(
     onRetryLoad: () -> Unit,
     onOpenFeeds: () -> Unit,
     onAddFeed: () -> Unit,
+    onOpenArticle: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showFailureDetails by remember { mutableStateOf(false) }
@@ -169,7 +173,7 @@ fun ArticleListScreen(
                     onAction = onRefresh,
                 )
 
-                else -> ArticleList(articles = state.articles)
+                else -> ArticleList(articles = state.articles, onOpenArticle = onOpenArticle)
             }
         }
     }
@@ -275,10 +279,13 @@ private fun failureReasonText(error: FeedRefreshError): String = when (error) {
 }
 
 @Composable
-private fun ArticleList(articles: List<ArticleListItem>) {
+private fun ArticleList(
+    articles: List<ArticleListItem>,
+    onOpenArticle: (Long) -> Unit,
+) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(items = articles, key = { it.article.id }) { item ->
-            ArticleRow(item = item)
+            ArticleRow(item = item, onClick = { onOpenArticle(item.article.id) })
             if (item.article.id != articles.last().article.id) {
                 HorizontalDivider()
             }
@@ -287,11 +294,12 @@ private fun ArticleList(articles: List<ArticleListItem>) {
 }
 
 @Composable
-private fun ArticleRow(item: ArticleListItem) {
+private fun ArticleRow(item: ArticleListItem, onClick: () -> Unit) {
     val unread = !item.article.isRead
     val unreadLabel = stringResource(R.string.article_unread)
 
     ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
         leadingContent = {
             Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
                 if (unread) {
@@ -427,6 +435,7 @@ private fun ArticleListScreenPreview() {
             onRetryLoad = {},
             onOpenFeeds = {},
             onAddFeed = {},
+            onOpenArticle = {},
         )
     }
 }
@@ -442,6 +451,7 @@ private fun ArticleListEmptyPreview() {
             onRetryLoad = {},
             onOpenFeeds = {},
             onAddFeed = {},
+            onOpenArticle = {},
         )
     }
 }

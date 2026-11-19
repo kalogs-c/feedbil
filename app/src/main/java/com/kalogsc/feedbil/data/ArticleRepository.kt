@@ -56,6 +56,9 @@ class ArticleRepository(
     suspend fun getByFeed(feedId: Long): List<Article> =
         articleDao.getByFeed(feedId).map { it.toDomain() }
 
+    /** Loads one article for the detail screen; `null` when it no longer exists. */
+    suspend fun getById(articleId: Long): Article? = articleDao.findById(articleId)?.toDomain()
+
     /**
      * Combined list across all feeds, newest first. Re-emits when articles or
      * feed names change, so refresh, read state, renames, and deletes all show

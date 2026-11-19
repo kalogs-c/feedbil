@@ -18,6 +18,8 @@ okhttp = "5.5.1"
 # with AGP 9.5.1 can read; newer releases need Kotlin 2.4 metadata.
 rssparser = "6.1.2"
 navigation = "2.10.2"
+# 3.3.0 targets Kotlin 2.2; newer Coil releases require Kotlin 2.4 metadata.
+coil = "3.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,6 +48,8 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 rssparser = { group = "com.prof18.rssparser", name = "rssparser", version.ref = "rssparser" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
 [plugins]

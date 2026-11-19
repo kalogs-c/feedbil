@@ -317,32 +317,39 @@ superseded in part by the launch refresh.
 
 ### Milestone 5 — Article reading experience
 
-**Status:** Not started.
+**Status:** Completed 2026-11-19.
 
 **Work**
 
-- Build an article detail screen.
-- Display only content available from the RSS feed for the MVP.
-- Support the content formats actually encountered in chosen test
-  feeds.
-- Make long text comfortable to read: line length, typography, spacing,
-  scrolling, and contrast.
-- Handle absent descriptions/content and invalid markup.
-- Record when an article is opened so the list can reflect read state.
-- Provide a clear way to return to the article list.
+- [x] Build an article detail screen with title, metadata, content and a
+      "Conteúdo fornecido pelo feed" caption.
+- [x] Display only content available from the RSS feed for the MVP,
+      preferring `contentHtml` over `description`.
+- [x] Render common HTML formatting, safe links and inline `<img>` images
+      through a pure-Kotlin sanitizer plus Compose and Coil.
+- [x] Make long text comfortable to read: capped line length, `sp` typography,
+      spacing, vertical scrolling and OLED dark contrast.
+- [x] Handle absent descriptions/content and malformed markup without
+      crashing; drop scripts, styles, iframes and unsafe URL schemes.
+- [x] Record when an article is opened so the list can reflect read state.
+- [x] Provide a back arrow and normal system back to return to the list.
 
 **Acceptance criteria**
 
-- Article content is readable on small screens and with larger system
-  font settings.
-- Malformed or absent content does not crash the screen.
-- External links, if supported, behave safely and predictably.
-- The app does not imply it has fetched the publisher's full article
-  when it only has RSS content.
+- [x] Article content is readable on small screens and with larger system
+      font settings (scalable `sp` typography, no fixed text height).
+- [x] Malformed or absent content does not crash the screen.
+- [x] External links open in the external browser after `http(s)` validation;
+      unsafe URLs become plain text.
+- [x] The "Conteúdo fornecido pelo feed" caption and "Abrir original" action
+      distinguish RSS content from the publisher's full article.
+- [x] 117 JVM tests pass on Windows (2026-11-19).
 
-**Decision gate** — Resolve HTML handling, sanitization, link behavior,
-image handling, and whether the article opens in an in-app or external
-browser.
+**Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): Compose +
+sanitized rich text with Coil images; images loaded on demand from inline
+`<img src>` only (no local image storage, no schema change); external browser
+for all links; images are a required feature and are no longer stripped.
+`RssItem.image`/enclosure images and offline image storage remain deferred.
 
 ### Milestone 6 — On-device AI summary
 

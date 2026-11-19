@@ -67,4 +67,16 @@
     <string name="action_close">Fechar</string>
     <string name="feed_last_updated">Atualizado em %1$s</string>
     <string name="feed_never_updated">Nunca atualizado</string>
+
+    <!-- Article detail -->
+    <string name="article_detail_title">Artigo</string>
+    <string name="article_detail_date">Publicado em %1$s</string>
+    <string name="article_detail_author">Por %1$s</string>
+    <string name="article_detail_content_source">Conteúdo fornecido pelo feed</string>
+    <string name="article_detail_no_content">Este feed não forneceu texto para este artigo.</string>
+    <string name="article_detail_not_found">Este artigo não existe mais.</string>
+    <string name="article_detail_error_title">Não foi possível carregar o artigo</string>
+    <string name="article_detail_error_description">Tente novamente em instantes.</string>
+    <string name="article_detail_image">Imagem do artigo</string>
+    <string name="action_open_original">Abrir original</string>
 </resources>

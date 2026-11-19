@@ -13,8 +13,15 @@ issues only; it is not a roadmap. Update it as milestones complete.
   a restart, only an old `lastFetchedAt` hints that a feed has been failing.
 - Entries without a usable link are not stored. Titles are never invented: a
   missing title is shown as "Sem título".
-- Article rows are display-only until milestone 5; nothing marks an article
-  as read yet, so all stored articles appear unread in M4.
+- Article images are loaded on demand from the URLs in the feed's HTML. Text
+  remains readable offline, but images do not appear without a network
+  connection and are not cached on disk by the app beyond Coil's in-memory
+  and HTTP caches. Loading an image contacts the host named by the feed,
+  which may be a third-party tracker.
+- Images embedded inside a sentence are rendered as their own block between
+  paragraphs instead of flowing inline with the text.
+- The article detail screen has no instrumented UI tests; loading, read-state
+  and formatting behavior is covered at the ViewModel and formatter level.
 - Adding a feed requires a network fetch that proves the URL is a
   reachable feed, so feeds cannot be added offline. Renaming an existing
   feed works offline; changing its URL does not.

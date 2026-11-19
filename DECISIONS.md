@@ -533,3 +533,63 @@ storage trim keeps unread articles first, while the list orders purely by date.
 **Consequences:** Read state cannot be changed from the M4 screen; M5 will
 record it when an article is opened and the indicator will update through this
 same Flow.
+
+## 2026-11-19 — Article content rendering: Compose + Coil, images online-only
+
+**Decision:** The detail screen renders feed HTML as Compose text blocks and
+images. A pure-Kotlin `ArticleContentFormatter` parses the stored
+`contentHtml` (falling back to `description`) into paragraphs and image blocks.
+It keeps `b`/`strong`, `i`/`em`, `u`, `br`, paragraph/list breaks and `http(s)`
+links, decodes common and numeric entities, and drops scripts, styles,
+iframes, images and links with any other URL scheme. Coil 3.3.0 with its OkHttp
+network fetcher loads `<img src>` URLs from the feed. Images are **not**
+downloaded or stored locally: offline reading shows a neutral experience
+without images. Only images already present in the stored HTML are used;
+`RssItem.image`/enclosure URLs are not stored or rendered.
+
+**Alternatives considered:**
+
+1. Plain text only — safest and smallest, but the user rejected dropping
+   images, which are a requirement.
+2. Sanitized `WebView` — easiest way to get images, formatting and links in
+   one renderer, but heavy, memory-hungry, awkward to unit-test, and needs a
+   locked-down configuration (no JavaScript, `http(s)` only).
+3. Third-party Compose HTML library — another dependency with no concrete
+   benefit over a focused parser for the small tag set we need.
+4. Download images at refresh and store them on-device — real offline images,
+   but needs bounded downloads, file storage, pruning and a v3 schema
+   migration. Deferred as a separate piece of work.
+5. Coil 3.6.x — uses Kotlin 2.4 metadata that this project's Kotlin 2.2
+   compiler cannot read; 3.3.0 is the newest compatible line.
+
+**Rationale:** The user confirmed that showing images is a must-have, but that
+loading them on demand (not offline) is acceptable. Reusing the HTML already
+stored avoids a schema change, and a pure-Kotlin parser keeps the security-
+relevant logic directly unit-testable.
+
+**Consequences:** Reading works offline for text; images require a network
+connection. An image request goes to whatever host the feed names, which may
+be a tracker. Images inside a sentence are hoisted to their own block instead
+of flowing inline; this keeps layout simple and lets images size naturally.
+The "Conteúdo fornecido pelo feed" caption makes clear the app shows RSS
+content, not the publisher's full page.
+
+## 2026-11-19 — Links open in the external browser
+
+**Decision:** Both the inline links in article content and the "Abrir
+original" action use Compose's `LocalUriHandler` (the platform `ACTION_VIEW`
+intent). `HttpUrlValidator` allows only absolute `http`/`https` URLs with a
+host before any URL is opened or rendered as an image.
+
+**Alternatives considered:** Custom Tabs (`androidx.browser`) keeps the user
+closer to the app but adds a dependency; an in-app `WebView` is the heaviest
+option and blurs the distinction between RSS content and a fetched publisher
+page.
+
+**Rationale:** External browser is predictable, needs no new dependency, and
+matches the user's choice.
+
+**Consequences:** Following a link leaves the app. Unsafe schemes become
+plain, non-clickable text, so embedded instructions in feed content cannot
+trigger navigation. A missing browser is swallowed rather than crashing the
+screen.
