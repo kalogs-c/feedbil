@@ -27,6 +27,7 @@
     <string name="action_save">Salvar</string>
     <string name="action_back">Voltar</string>
     <string name="feed_form_checking">Verificando o feed…</string>
+    <string name="feed_form_loading">Carregando feed…</string>
 
     <!-- Validation and network errors -->
     <string name="error_name_blank">Informe um nome para o feed.</string>

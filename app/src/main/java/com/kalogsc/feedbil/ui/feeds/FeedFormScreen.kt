@@ -33,6 +33,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -103,13 +105,16 @@ fun FeedFormScreen(
         },
     ) { innerPadding ->
         if (state.isLoadingFeed) {
+            val loadingLabel = stringResource(R.string.feed_form_loading)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    modifier = Modifier.semantics { contentDescription = loadingLabel },
+                )
             }
         } else {
             FeedFormFields(
