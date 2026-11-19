@@ -20,6 +20,8 @@ features can be added without premature abstraction.
   - **Normal share:** share the article title and source URL.
 - Retain only articles published within the last 7 days, with a
   maximum of 100 articles per feed.
+- Remember when the user last opened an article; when the 100-article
+  cap is applied, unread articles are kept in preference to read ones.
 - Store app data locally. No account or app-owned backend is required
   for the MVP.
 
@@ -118,6 +120,10 @@ configuration cache, `kotlin.code.style=official`. Light layered
 architecture (Compose UI + ViewModel + repositories) with manual
 dependency construction was also approved.
 
+Milestone 2 resolved local persistence, entity shape, duplicate
+detection, the missing-date policy, and read tracking; see the
+2026-11-18 entries in `DECISIONS.md`.
+
 Do not decide all items up front. Resolve only what is needed for the
 next milestone.
 
@@ -177,33 +183,51 @@ construction; no new dependencies beyond the template set.
 
 ### Milestone 2 — Domain model and local storage
 
-**Status:** Not started.
+**Status:** Completed (2026-11-18). Storage is implemented and covered by
+JVM tests; no screen uses it yet, so the user-visible proof of
+persistence arrives with Milestone 3.
 
 **Work**
 
-- Define the minimum concepts: feed and article.
-- Define stable identifiers and relationships.
-- Store feed name, feed URL, article metadata, article content supplied
-  by RSS, publication date, and feed association as appropriate.
-- Implement retention rules: remove articles older than 7 days and
-  enforce a maximum of 100 retained articles per feed.
-- Ensure retention runs after feed updates and when needed on app
-  startup.
-- Handle missing or invalid publication dates explicitly; agree on a
-  deterministic policy rather than guessing.
-- Add database migrations strategy appropriate to the chosen storage.
+- [x] Define the minimum concepts: feed and article
+  (`domain/model/Feed.kt`, `domain/model/Article.kt`).
+- [x] Define stable identifiers and relationships: `Long`
+  autoincrement keys; articles reference their feed and are deleted with
+  it.
+- [x] Store feed name, feed URL, article metadata, article content
+  supplied by RSS, publication date, and feed association as
+  appropriate (`data/local/entity/Entities.kt`).
+- [x] Implement retention rules: remove articles older than 7 days and
+  enforce a maximum of 100 retained articles per feed, keeping unread
+  articles in preference to read ones.
+- [x] Ensure retention runs after feed updates and when needed on app
+  startup (`ArticleRepository.store`, `ArticleRepository.pruneAll`, and
+  `FeedbilApplication`).
+- [x] Handle missing or invalid publication dates explicitly: the stored
+  date falls back to the observation time, recorded in `DECISIONS.md`.
+- [x] Add a database migration strategy appropriate to the chosen
+  storage: exported schemas under `app/schemas`, hand-written migrations,
+  no destructive fallback.
+- [x] Add read tracking (`lastReadAt`) as an approved scope addition.
 
 **Acceptance criteria**
 
-- Feeds and articles survive app restarts.
-- Articles are associated with the correct feed.
-- Retention is enforced per feed, not globally.
-- Duplicate feed entries do not create duplicate articles.
-- Storage behavior is covered by tests.
+- Feeds and articles survive app restarts (verified by reopening a
+  file-backed database in `DatabasePersistenceTest`).
+- Articles are associated with the correct feed (verified in
+  `ArticleStorageTest`).
+- Retention is enforced per feed, not globally (verified in
+  `ArticleStorageTest` and `ArticleRepositoryTest`).
+- Duplicate feed entries do not create duplicate articles (verified by
+  unique `(feedId, link)` and `(feedId, guid)` indexes).
+- Storage behavior is covered by tests: 33 JVM tests pass on Windows
+  (2026-11-18).
 
-**Decision gate** — Resolve persistence technology, entity shape,
-duplicate detection strategy, and exact policy for missing dates and
-the 100-article ordering rule.
+**Decision gate** — Resolved 2026-11-18 (`DECISIONS.md`): Room 2.8.5 with
+KSP; `Long` identities and two unique indexes for duplicate detection;
+publication date falling back to observation time; unread-first
+retention; separate domain models; exported schemas without destructive
+fallback; Robolectric-based storage tests.
 
 ### Milestone 3 — Feed management
 
@@ -246,6 +270,7 @@ behavior, and whether refresh is manual-only for the MVP.
 - Apply 7-day and 100-article retention rules.
 - Display articles in a readable list, including available title,
   source/feed, and date.
+- Reflect read/unread state in the article list.
 - Add pull-to-refresh or an explicit refresh action.
 - Define behavior for feeds that fail while other feeds succeed.
 
@@ -274,6 +299,7 @@ timeout/retry policy, article sorting, and missing-field presentation.
 - Make long text comfortable to read: line length, typography, spacing,
   scrolling, and contrast.
 - Handle absent descriptions/content and invalid markup.
+- Record when an article is opened so the list can reflect read state.
 - Provide a clear way to return to the article list.
 
 **Acceptance criteria**
@@ -412,6 +438,7 @@ These are product requirements, not prescribed implementation details.
 - Original article URL.
 - Available title, description/content, publication date, and other
   useful RSS fields.
+- Read state: when the user last opened the article.
 - No assumption that every feed provides every field.
 
 ### Retention
@@ -419,9 +446,10 @@ These are product requirements, not prescribed implementation details.
 - Maximum age: 7 days.
 - Maximum count: 100 articles per feed.
 - Enforce both rules consistently.
-- Define what happens when publication dates are absent or unreliable.
-- Define whether the 100 newest articles are selected by publication
-  date or feed order.
+- When a publication date is absent or unparseable, the observation
+  time is used.
+- Unread articles are kept in preference to read ones within the
+  count limit.
 - Treat retention as a storage rule, not just a UI filter.
 
 ### AI

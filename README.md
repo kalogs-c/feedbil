@@ -56,8 +56,25 @@ Single-module app (`:app`), package `com.kalogsc.feedbil`:
 
 - `app/src/main/java/com/kalogsc/feedbil/MainActivity.kt` — app entry
   point and home placeholder screen
+- `app/src/main/java/com/kalogsc/feedbil/FeedbilApplication.kt`,
+  `AppContainer.kt` — manual dependency container and startup retention
+- `app/src/main/java/com/kalogsc/feedbil/domain/` — feed and article
+  models, retention rules, publication-date policy
+- `app/src/main/java/com/kalogsc/feedbil/data/local/` — Room entities,
+  DAOs, and the versioned database
+- `app/src/main/java/com/kalogsc/feedbil/data/` — repositories that hide
+  storage details
 - `app/src/main/java/com/kalogsc/feedbil/ui/theme/` — OLED-friendly
   always-dark Material 3 theme
+
+Database schemas are exported to `app/schemas/` and committed: every
+schema change needs a migration, and there is no destructive fallback.
+
+## Testing
+
+`testDebugUnitTest` covers domain rules and storage. Storage tests use
+Robolectric with in-memory Room, so they need no device; the first run
+downloads Robolectric's Android runtime jars.
 
 ## Documentation
 
