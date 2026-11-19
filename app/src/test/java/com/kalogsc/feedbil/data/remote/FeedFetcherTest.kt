@@ -35,7 +35,7 @@ class FeedFetcherTest {
             )
         }
 
-        assertEquals(FeedFetchResult.Success("Example Blog", 0), fetcher.fetch(url))
+        assertEquals(FeedFetchResult.Success("Example Blog", emptyList()), fetcher.fetch(url))
     }
 
     @Test

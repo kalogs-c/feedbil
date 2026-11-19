@@ -29,7 +29,7 @@ class FeedFetcher(
             val channel = fetchChannel(url)
             FeedFetchResult.Success(
                 title = channel.title,
-                itemCount = channel.items.size,
+                items = channel.items,
             )
         } catch (cancellation: CancellationException) {
             throw cancellation

@@ -1,16 +1,24 @@
 package com.kalogsc.feedbil.data.remote
 
+import com.prof18.rssparser.model.RssItem
+
 /**
  * Outcome of fetching and parsing one feed URL. Failures are values, not
  * exceptions, so the UI can map each one to a clear message.
  */
 sealed interface FeedFetchResult {
 
-    /** The URL served a feed the parser understood. */
+    /**
+     * The URL served a feed the parser understood. Items stay in the parser's
+     * shape so the remote layer owns parser types; [FeedArticleMapper] turns
+     * them into stored articles.
+     */
     data class Success(
         val title: String?,
-        val itemCount: Int,
-    ) : FeedFetchResult
+        val items: List<RssItem>,
+    ) : FeedFetchResult {
+        val itemCount: Int get() = items.size
+    }
 
     /** The URL is syntactically unusable; the form should reject it earlier. */
     data object InvalidUrl : FeedFetchResult
