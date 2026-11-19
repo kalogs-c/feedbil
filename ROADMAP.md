@@ -264,37 +264,56 @@ RSS/Atom parsing, a shared OkHttp client, strict add-feed validation
 (fetch and parse before saving), typed fetch errors, Navigation Compose
 with string routes, cleartext `http://` feeds allowed, unique feed URLs
 enforced by the storage index, and manual refresh only for the MVP.
+Refresh is revised in Milestone 4: automatic once at app launch plus a
+manual action, still no background work.
 
 ### Milestone 4 — Feed refresh and article list
 
-**Status:** Not started.
+**Status:** Completed 2026-11-19.
 
 **Work**
 
-- Fetch and parse each saved feed.
-- Map available RSS fields into the article model without inventing
-  missing data.
-- Handle common RSS variations and malformed entries gracefully.
-- Merge new articles with stored articles using the approved duplicate
-  strategy.
-- Apply 7-day and 100-article retention rules.
-- Display articles in a readable list, including available title,
-  source/feed, and date.
-- Reflect read/unread state in the article list.
-- Add pull-to-refresh or an explicit refresh action.
-- Define behavior for feeds that fail while other feeds succeed.
+- [x] Fetch and parse each saved feed through `FeedRefreshService`.
+- [x] Map available RSS/Atom fields into `Article` without inventing missing
+      data (`FeedArticleMapper`, `FeedDateParser`).
+- [x] Handle common RSS variations and malformed entries gracefully: skip
+      linkless entries, trim blanks to `null`, parse RFC 1123/822 and ISO dates,
+      and map whole-feed failures to typed results.
+- [x] Merge new articles with stored articles using the approved duplicate
+      strategy (`OnConflictStrategy.IGNORE` in storage).
+- [x] Apply 7-day and 100-article retention rules on every refresh.
+- [x] Display articles in a readable combined list with title, feed name, date,
+      and unread indicator.
+- [x] Reflect read/unread state in the article list.
+- [x] Add an explicit refresh action; also refresh automatically once on app
+      launch (see the decision gate).
+- [x] Define partial-failure behavior: failed feeds are listed in a dismissible
+      banner with details and retry; successful feeds still update.
 
 **Acceptance criteria**
 
-- Refresh retrieves new entries and preserves existing retained
-  entries.
-- A failed feed does not prevent successful feeds from updating.
-- Duplicate entries are not repeatedly inserted.
-- Loading, empty, partial-failure, and error states are clear.
-- Retention limits remain true after refresh.
+- Refresh retrieves new entries and preserves existing retained entries
+  (verified in `FeedRefreshServiceTest`).
+- A failed feed does not prevent successful feeds from updating (verified in
+  `FeedRefreshServiceTest`).
+- Duplicate entries are not repeatedly inserted (verified in
+  `FeedRefreshServiceTest` and storage tests).
+- Loading, empty, partial-failure, and error states are represented in
+  `ArticleListUiState` and covered by `ArticleListViewModelTest`.
+- Retention limits remain true after refresh (verified in
+  `FeedRefreshServiceTest`).
+- The v1→v2 migration preserves data and adds a nullable fetch time (verified
+  in `DatabaseMigrationTest`).
+- 102 JVM tests pass on Windows (2026-11-19).
 
-**Decision gate** — Resolve refresh orchestration, concurrency,
-timeout/retry policy, article sorting, and missing-field presentation.
+**Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): articles-first home
+with feed management behind a top-bar action; automatic refresh once per app
+process at launch plus a manual refresh action (no timer, no background work);
+persisted `lastFetchedAt` with a hand-written v1→v2 migration; initial articles
+stored when a feed is added or its URL changes; bounded concurrency of four,
+no automatic retries; dismissible partial-failure banner; pt-BR absolute
+short dates in the list. The M3 "manual refresh only for the MVP" decision is
+superseded in part by the launch refresh.
 
 ### Milestone 5 — Article reading experience
 

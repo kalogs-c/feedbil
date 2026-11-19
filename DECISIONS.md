@@ -377,3 +377,159 @@ deprecated manifest default.
 
 **Consequences:** Feed requests may travel unencrypted. No app data
 other than the feed request is sent. Recorded in `LIMITATIONS.md`.
+
+## 2026-11-19 — Articles-first home, feeds as a secondary screen
+
+**Decision:** The start destination is the combined article list. Feed
+management stays on the existing `feeds` screen, reached through a top-bar
+action and with a back arrow. Article rows are display-only in M4; opening
+an article arrives with M5.
+
+**Alternatives considered:**
+
+1. Feeds-first (keep the M3 home and add a per-feed article screen) — a small
+   change, but two taps to read, no combined inbox, and a redundant "source"
+   column.
+2. Bottom tabs for Articles and Feeds — discoverable but more navigation UI
+   and duplicated top-level state for only two destinations.
+3. Articles-first (chosen) — reader-first, matches the requirement to show the
+   source/feed on each row, and needs no per-feed article screen.
+
+**Rationale:** M4 is the first milestone where the user comes to read, not to
+manage subscriptions. The feed list remains one tap away for management.
+
+**Consequences:** The start destination changed; existing feed-list navigation
+gained a back action; string routes made this change local to
+`FeedbilNavHost`.
+
+## 2026-11-19 — Refresh triggers: launch plus manual, no background
+
+**Decision:** All saved feeds are refreshed automatically once when the
+article list first appears after the app process starts. Every later refresh
+is an explicit top-bar action. There is no timer, no refresh on returning to a
+still-running app, no pull-to-refresh, and no WorkManager job in M4.
+
+**Alternatives considered:**
+
+1. Manual only — simplest and predictable, but a fresh install with feeds
+   added in M3 would show no articles until the user discovers the action.
+2. Automatic on every resume when data is older than a time window — fresher,
+   but needs a staleness policy and throttling, and causes network use every
+   time the user returns to the app.
+3. Periodic WorkManager refresh — runs while the app is closed, but Android
+   makes intervals inexact and adds dependency/worker/retry complexity.
+4. Launch once plus manual (chosen).
+
+**Rationale:** The user asked for the smallest useful rule and explicitly
+deferred background work. Keeping the refresh logic in a UI-independent
+`FeedRefreshService` means a future worker can call the same method without
+changing storage or refresh code.
+
+**Consequences:** This supersedes the M3 "manual refresh only for the MVP"
+decision. Returning to a backgrounded app whose process is still alive relies
+on manual refresh; a failed launch refresh is not retried automatically.
+An app opened with no feeds skips the automatic refresh entirely.
+
+## 2026-11-19 — Persist the last successful fetch time
+
+**Decision:** `feeds.lastFetchedAt` is a nullable `INTEGER` added in schema
+v2 with a hand-written `MIGRATION_1_2`. It is set after a successful refresh
+or after initial articles are stored on add/URL change. Existing feeds start
+as `null`. The feed list displays "Nunca atualizado" or "Atualizado em …".
+
+**Alternatives considered:** In-memory-only state (lost on restart), a
+separate metadata table (more schema for one value), and DataStore (a new
+dependency and two sources of truth).
+
+**Rationale:** Staleness must survive restarts for users to judge whether a
+feed is still working, and a future background trigger needs persisted state.
+The migration path is exercised and tested now rather than under time pressure
+later.
+
+**Consequences:** Schema 1 and 2 JSON files are committed; destructive
+fallback remains forbidden. Per-feed failures are still session-only, so after
+a restart a long-failing feed is visible only through an old `lastFetchedAt`.
+
+## 2026-11-19 — Store initial articles on add and URL change
+
+**Decision:** The feed-validation fetch is reused: after a new feed is saved,
+or after an existing feed's URL changes, its parsed items are mapped and stored
+immediately with that feed's id. Renaming only never fetches. If article
+storage fails, the feed remains saved and the next refresh heals the gap.
+
+**Alternatives considered:** Require a manual refresh after adding (wastes the
+fetch and shows an empty list), wrap feed and articles in one transaction
+(across two repositories, which complicates the established boundaries), and
+delete old articles when a URL changes (silent data loss).
+
+**Rationale:** A new subscription should show content immediately without a
+second request; retention will remove stale articles from a replaced URL
+without deleting user history by hand.
+
+**Consequences:** A feed can exist with `lastFetchedAt = null` if the initial
+store failed; that is intentional and self-healing.
+
+## 2026-11-19 — Feed item mapping and missing fields
+
+**Decision:** An entry is stored only when it has a non-blank `link`. Trimmed
+blank values become `null`; titles are never derived from the URL or the
+description. A missing title renders as the localized "Sem título". Dates are
+parsed from RFC 1123/RFC 822 and ISO 8601; unparseable or missing dates use the
+observation time as already decided. HTML is stored as supplied and rendered
+as plain text in the list.
+
+**Alternatives considered:** Use the link as a title, derive a title from the
+description, drop undated entries, or format dates with the device locale.
+
+**Rationale:** "Never invent article data" is a product constraint; the
+placeholder is explicitly a UI label, not feed data. Accepted date formats
+cover the RSS and Atom variants seen in the fixtures without a date library.
+
+**Consequences:** Some feeds legitimately show "Sem título". HTML sanitization
+and full-text rendering are deferred to M5. Dates use pt-BR `dd/MM/yyyy, HH:mm`
+in the device time zone, matching the app's fixed UI language.
+
+## 2026-11-19 — Refresh orchestration, concurrency, and failure UX
+
+**Decision:** `FeedRefreshService` fetches at most four feeds concurrently,
+serializes triggers with a process-level mutex, and returns a `RefreshSummary`
+with typed per-feed failures. Storage failures are isolated per feed; existing
+OkHttp timeouts (10 s connect, 15 s read, 20 s call) are reused and there is no
+automatic retry or conditional GET/ETag. Stored articles stay visible while a
+refresh runs and after it fails; failures appear in a dismissible banner with
+a details dialog and a retry action.
+
+**Alternatives considered:** Sequential refresh (slower with many feeds),
+unbounded parallel requests (server and battery unfriendly), automatic retry
+with backoff (long waits and repeated load), hiding the list behind a full
+spinner (hides already available content), and putting orchestration in the
+ViewModel (harder to reuse from a future background worker).
+
+**Rationale:** Each feed is independent, and the UI needs clear partial-failure
+feedback without losing reading material. The service depends only on
+repositories and a fetch function, so tests use fakes and no live feeds.
+
+**Consequences:** A dead feed is retried only when the user refreshes or on the
+next app process launch. Refresh always downloads the full feed; bandwidth is
+acceptable at MVP scale. A concurrent manual tap during a refresh is ignored
+by the ViewModel and serialized by the service.
+
+## 2026-11-19 — Combined article query and ordering
+
+**Decision:** A Room join exposes `ArticleListItem(article, feedName)` as a
+`Flow`, ordered by `publishedAt DESC, id DESC`. Read state is shown with an
+unread dot and a bolder title; there is no read filter or mark-as-read action
+in M4.
+
+**Alternatives considered:** Per-feed queries only (the articles-first home
+needs a combined list), a view with a copied feed name (would go stale on
+rename), and read/unread filtering (not in the MVP scope).
+
+**Rationale:** Room invalidates the joined query when articles or feeds
+change, so refresh, renames, deletes, and later read-state updates all appear
+without manual reloads. Retention ordering is intentionally different: the
+storage trim keeps unread articles first, while the list orders purely by date.
+
+**Consequences:** Read state cannot be changed from the M4 screen; M5 will
+record it when an article is opened and the indicator will update through this
+same Flow.

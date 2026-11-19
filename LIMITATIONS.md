@@ -3,17 +3,26 @@
 Known MVP limitations and constraints. This file lists current known
 issues only; it is not a roadmap. Update it as milestones complete.
 
-- Feeds can be added, edited, and removed, but their articles are not
-  fetched yet: the feed list is the home screen and shows no articles
-  until milestone 4.
+- Feed refresh is manual or happens once when the app process starts; there
+  is no background refresh, timer, or automatic retry, and returning to an
+  already-running app does not refresh. A future background worker can reuse
+  `FeedRefreshService` but is not implemented.
+- Feeds are downloaded in full on every refresh; no conditional GET/ETag or
+  caching is implemented, so a manual refresh always uses the network.
+- Per-feed refresh failures are kept in memory for the current session. After
+  a restart, only an old `lastFetchedAt` hints that a feed has been failing.
+- Entries without a usable link are not stored. Titles are never invented: a
+  missing title is shown as "Sem título".
+- Article rows are display-only until milestone 5; nothing marks an article
+  as read yet, so all stored articles appear unread in M4.
 - Adding a feed requires a network fetch that proves the URL is a
   reachable feed, so feeds cannot be added offline. Renaming an existing
   feed works offline; changing its URL does not.
 - `http://` feeds are allowed, so feed requests can travel unencrypted
   (decided on purpose; see `DECISIONS.md`).
-- The feed list and form have no instrumented UI tests: their behavior
-  is covered at the ViewModel level. No emulator or device was available
-  to verify the screens manually (2026-11-19).
+- The feed and article-list screens have no instrumented UI tests: their
+  behavior is covered at the ViewModel level. No emulator or device was
+  available to verify the screens manually (2026-11-19).
 - The project builds with the Windows-installed Android SDK from the
   Windows side. Linux/WSL builds are not supported: the project resides
   on the Windows filesystem and the Windows SDK build-tools are not
@@ -29,10 +38,6 @@ issues only; it is not a roadmap. Update it as milestones complete.
 - Retention runs after a feed update and once when the app starts.
   Nothing prunes while the app is closed, so expired articles can remain
   on disk until the next launch or refresh.
-- Read state is stored (`lastReadAt`), but nothing marks articles as
-  read until the article screen ships in milestone 5.
 - Model availability, supported devices, memory requirements, and APK
   size impact for the on-device AI summary (milestone 6) are not yet
   determined.
-- Feed refresh runs on demand only for now; background refresh is an
-  open decision (ROADMAP.md §2), not an MVP guarantee.
