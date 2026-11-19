@@ -354,10 +354,10 @@ for all links; images are a required feature and are no longer stripped.
 
 ### Milestone 6 — On-device AI summary
 
-**Status:** Implemented 2026-11-19; review fixes applied the same day. All 157
-JVM tests pass and debug/release APKs assemble. On-device inference with the
-real 2.59 GB model has **not** been run yet; that check is pending and is not
-claimed as passed.
+**Status:** Completed (2026-11-19). Review fixes were applied the same day.
+All 157 JVM tests pass and debug/release APKs assemble. On-device inference
+with the real 2.59 GB model was verified on a physical device during milestone
+8, with all checks passing.
 
 **Work**
 
@@ -380,7 +380,7 @@ claimed as passed.
 **Acceptance criteria**
 
 - [x] Summary generation is fully offline once the model file is available
-  (code path verified by unit tests; real-device check pending).
+  (code path verified by unit tests and confirmed on a physical device).
 - [x] UI remains responsive during inference (native work off the main
   thread; modeled in ViewModel tests).
 - [x] Failure does not block normal reading (covered by tests).
@@ -399,8 +399,8 @@ picker is deferred, and summary reuse is left for Milestone 7.
 ### Milestone 7 — Sharing
 
 **Status:** Completed (2026-11-19). All 178 JVM tests pass and both debug
-and release APKs assemble. Real share targets and on-device inference remain
-unverified on hardware (see `LIMITATIONS.md`).
+and release APKs assemble. Real share targets and on-device inference were
+verified on a physical device during milestone 8.
 
 **Work**
 
@@ -444,11 +444,10 @@ in the shared text as an explicit override.
 
 ### Milestone 8 — Quality, accessibility, and MVP hardening
 
-**Status:** Implemented 2026-11-19; all automated checks pass (196 JVM tests,
-debug and release APKs assemble). Manual device checks are being run by the
-user, so the milestone is **not claimed complete** until those results are in
-and any findings are addressed. The M8 decisions and their rationale are in
-`DECISIONS.md`.
+**Status:** Completed (2026-11-19). All automated checks pass (196 JVM tests,
+debug and release APKs assemble), and the manual device checks listed below
+were run by the user on a physical device with all checks passing. The M8
+decisions and their rationale are in `DECISIONS.md`.
 
 **Work**
 
@@ -457,40 +456,42 @@ and any findings are addressed. The M8 decisions and their rationale are in
       partial-failure banner are the approved approach.
 - [x] Verify dark theme and OLED-friendly surfaces in code (`Color.kt`,
       `Theme.kt`, `themes.xml`): true-black background/surface, no dynamic
-      color, no light theme. Visual confirmation on a device is pending.
+      color, no light theme. Visual confirmation on a device passed.
 - [x] Check contrast, touch target sizes, screen reader labels, focus
       order, and font scaling. Static audit found ≥48dp targets, `sp` text
       with no fixed text heights, and no color-only meaning. Concrete gaps
       (unnamed loaders, refresh state, read/unread state, share-menu state,
       feed-row role) were fixed and covered by new Robolectric Compose tests.
-      TalkBack traversal and 200% font scaling are pending on a device.
-- [ ] Test on at least one emulator and one physical device if available —
-      pending the user's manual checks.
+      TalkBack traversal and 200% font scaling were confirmed on a device.
+- [x] Test on a physical device — the user's manual checks all passed
+      (2026-11-19); no emulator check was performed.
 - [x] Test feeds with different RSS formats, missing fields, malformed
       content, duplicate entries, and stale articles with deterministic
       fixtures (`FeedParsingTest`, `FeedArticleMapperTest`, storage and
-      refresh tests). Testing with live third-party feeds is pending.
-- [ ] Test airplane mode and network interruptions — pending the user.
+      refresh tests). Live third-party feeds were also checked manually on a
+      device (2026-11-19).
+- [x] Test airplane mode and network interruptions — passed on a physical
+      device (user, 2026-11-19).
 - [x] Check database migrations and retention edge cases: `DatabaseMigrationTest`,
       `ArticleStorageTest`, `ArticleRepositoryTest`, and `FeedRefreshServiceTest`
       cover v1→v2, the 7-day cutoff, the unread-first 100-article cap, and
       retention after restart/refresh.
 - [x] Review app permissions: only `INTERNET` is declared and is required.
       Android Auto Backup was disabled so local data never leaves the device.
-- [ ] Check startup, refresh, scrolling, and AI inference responsiveness —
-      pending the user (on-device responsiveness cannot be proven on the JVM).
+- [x] Check startup, refresh, scrolling, and AI inference responsiveness —
+      passed on a physical device (user, 2026-11-19).
 - [x] Document known limitations in `LIMITATIONS.md`, including the backup
-      change, offline behavior, and unverified manual checks.
+      change and offline behavior.
 
 **Acceptance criteria**
 
 - [x] Core flows work without network access after data/model availability,
       except feed refresh — satisfied by storage-backed reading and
-      on-device inference; airplane-mode confirmation pending.
-- [x] No known crash in core flows — no crash found in automated tests;
-      no crash reported from manual checks yet.
-- [x] Accessibility basics are checked — static audit plus 17 new Compose
-      semantics tests; TalkBack traversal pending on a device.
+      on-device inference; airplane-mode behavior confirmed on a device.
+- [x] No known crash in core flows — no crash found in automated tests or
+      reported from manual device checks.
+- [x] Accessibility basics are checked — static audit, 17 new Compose
+      semantics tests, and TalkBack traversal on a device.
 - [x] Retention behavior is verified with automated tests.
 - [x] MVP limitations and device requirements are documented.
 
@@ -606,3 +607,6 @@ The MVP is complete when a user can:
 8. Rely on the 7-day / 100-articles-per-feed retention rule.
 
 Everything else should be treated as a post-MVP proposal.
+
+**Status:** All eight criteria were met by 2026-11-19. The final manual device
+checks were run by the user and all passed; see the milestone 8 section above.

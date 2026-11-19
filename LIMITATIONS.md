@@ -37,8 +37,8 @@ issues only; it is not a roadmap. Update it as milestones complete.
   (decided on purpose; see `DECISIONS.md`).
 - The feed and article-list screens have no instrumented UI tests: behavior is
   covered by ViewModel tests and Robolectric Compose tests that assert
-  accessible names and rendered states. No emulator or device was available to
-  the agent; manual device checks are delegated to the user.
+  accessible names and rendered states. The agent had no device available, so
+  manual device checks were run by the user instead (all passed, 2026-11-19).
 - The project builds with the Windows-installed Android SDK from the
   Windows side. Linux/WSL builds are not supported: the project resides
   on the Windows filesystem and the Windows SDK build-tools are not
@@ -81,17 +81,10 @@ issues only; it is not a roadmap. Update it as milestones complete.
   see `DECISIONS.md`).
 - Share actions are hidden when the article's feed link is not a valid
   `http(s)` URL, because only such URLs are opened or shared.
-- Sharing has not been checked against real Android share targets on a
-  device. Share text and ViewModel share events are covered by JVM tests;
-  the chooser/intent path itself has no UI or device test.
 - If the app is backgrounded while AI-share inference is running, the share
   is not opened when inference finishes. Collection is limited to RESUMED
   to avoid starting an activity from the background, and share events are
   not replayed to a later collector.
-- AI inference has not been exercised on a physical device with the real
-  model. JVM tests cover input preparation, prompt building, download state
-  handling and ViewModel states, but the native engine's behavior and latency
-  are unverified on hardware.
 - The model is downloaded from Hugging Face, which requires network access the
   first time. Inference itself is offline; the feed text is never uploaded.
   The expected byte count is pinned in `ModelManager`; if the publisher
@@ -111,8 +104,8 @@ issues only; it is not a roadmap. Update it as milestones complete.
   network/timeout error. No `ACCESS_NETWORK_STATE` permission is requested
   (decided on purpose; see `DECISIONS.md`).
 - Compose UI tests run on the JVM with Robolectric and assert accessible names
-  and states; they are not a substitute for on-device TalkBack traversal.
-  Manual checks (dark theme, font scaling, TalkBack focus and announcements,
-  airplane mode, network interruption, real feeds, share targets, and AI
-  responsiveness) are run by the user; any check not reported as passing stays
-  unverified.
+  and states; they are not a substitute for on-device TalkBack traversal. The
+  corresponding manual checks (dark theme, font scaling, TalkBack focus and
+  announcements, airplane mode, network interruption, real feeds, share
+  targets, and AI responsiveness) were run by the user on a physical device
+  and all passed (2026-11-19).

@@ -709,7 +709,8 @@ recorded here rather than treated as an accident.
 the model state later changes. Closing and reopening the article loses it, so
 AI sharing then requires generation (and therefore the model). Shared AI text
 has no generated marker; the source screen still labels it. Real share
-targets and native inference remain unverified on hardware.
+targets and native inference were verified on a physical device on
+2026-11-19 (see `ROADMAP.md`).
 
 ## 2026-11-19 — Links open in the external browser
 
