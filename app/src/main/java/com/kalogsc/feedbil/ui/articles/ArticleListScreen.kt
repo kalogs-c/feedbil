@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -265,18 +265,20 @@ private fun FailureDetailsDialog(
 
 @Composable
 private fun failureReasonText(error: FeedRefreshError): String = when (error) {
-    is FeedRefreshError.Fetch -> when (error.result) {
-        is FeedFetchResult.HttpError -> stringResource(R.string.error_http, error.result.code)
-        FeedFetchResult.InvalidUrl -> stringResource(R.string.error_url_invalid)
-        FeedFetchResult.NotAFeed -> stringResource(R.string.error_not_a_feed)
-        FeedFetchResult.Network -> stringResource(R.string.error_network)
-        FeedFetchResult.Timeout -> stringResource(R.string.error_timeout)
-        FeedFetchResult.Unknown -> stringResource(R.string.error_unknown)
-        is FeedFetchResult.Success -> stringResource(R.string.error_unknown)
-    }
-
+    is FeedRefreshError.Fetch -> fetchResultText(error.result)
     FeedRefreshError.Storage -> stringResource(R.string.error_articles_storage)
     FeedRefreshError.Unknown -> stringResource(R.string.error_unknown)
+}
+
+@Composable
+private fun fetchResultText(result: FeedFetchResult): String = when (result) {
+    is FeedFetchResult.HttpError -> stringResource(R.string.error_http, result.code)
+    FeedFetchResult.InvalidUrl -> stringResource(R.string.error_url_invalid)
+    FeedFetchResult.NotAFeed -> stringResource(R.string.error_not_a_feed)
+    FeedFetchResult.Network -> stringResource(R.string.error_network)
+    FeedFetchResult.Timeout -> stringResource(R.string.error_timeout)
+    FeedFetchResult.Unknown -> stringResource(R.string.error_unknown)
+    is FeedFetchResult.Success -> stringResource(R.string.error_unknown)
 }
 
 @Composable
@@ -285,9 +287,9 @@ private fun ArticleList(
     onOpenArticle: (Long) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(items = articles, key = { it.article.id }) { item ->
+        itemsIndexed(items = articles, key = { _, item -> item.article.id }) { index, item ->
             ArticleRow(item = item, onClick = { onOpenArticle(item.article.id) })
-            if (item.article.id != articles.last().article.id) {
+            if (index < articles.lastIndex) {
                 HorizontalDivider()
             }
         }

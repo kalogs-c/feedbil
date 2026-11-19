@@ -16,9 +16,7 @@ sealed interface FeedFetchResult {
     data class Success(
         val title: String?,
         val items: List<RssItem>,
-    ) : FeedFetchResult {
-        val itemCount: Int get() = items.size
-    }
+    ) : FeedFetchResult
 
     /** The URL is syntactically unusable; the form should reject it earlier. */
     data object InvalidUrl : FeedFetchResult

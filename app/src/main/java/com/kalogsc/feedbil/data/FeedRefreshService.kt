@@ -21,9 +21,7 @@ data class RefreshSummary(
     val feedCount: Int,
     val newArticleCount: Int,
     val failures: List<FeedRefreshFailure>,
-) {
-    val hasFailures: Boolean get() = failures.isNotEmpty()
-}
+)
 
 /** One feed that could not be refreshed, kept for the UI's details list. */
 data class FeedRefreshFailure(
@@ -65,14 +63,6 @@ class FeedRefreshService(
 
     suspend fun refreshAll(): RefreshSummary = refreshMutex.withLock {
         val feeds = feedRepository.getAll()
-        if (feeds.isEmpty()) {
-            return@withLock RefreshSummary(
-                feedCount = 0,
-                newArticleCount = 0,
-                failures = emptyList(),
-            )
-        }
-
         val semaphore = Semaphore(maxConcurrentFetches.coerceAtLeast(1))
         val outcomes = coroutineScope {
             feeds.map { feed ->
@@ -98,28 +88,23 @@ class FeedRefreshService(
                     FeedRefreshOutcome(newArticleCount = newArticles, failure = null)
                 }
 
-                else -> FeedRefreshOutcome(
-                    newArticleCount = 0,
-                    failure = FeedRefreshFailure(
-                        feedId = feed.id,
-                        feedName = feed.name,
-                        reason = FeedRefreshError.Fetch(result),
-                    ),
-                )
+                else -> failed(feed, FeedRefreshError.Fetch(result))
             }
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            FeedRefreshOutcome(
-                newArticleCount = 0,
-                failure = FeedRefreshFailure(
-                    feedId = feed.id,
-                    feedName = feed.name,
-                    reason = storageOrUnknown(error),
-                ),
-            )
+            failed(feed, storageOrUnknown(error))
         }
     }
+
+    private fun failed(feed: Feed, reason: FeedRefreshError) = FeedRefreshOutcome(
+        newArticleCount = 0,
+        failure = FeedRefreshFailure(
+            feedId = feed.id,
+            feedName = feed.name,
+            reason = reason,
+        ),
+    )
 
     private suspend fun markFetched(feedId: Long, fetchedAtEpochMillis: Long) {
         try {
