@@ -145,8 +145,10 @@ same day (`DECISIONS.md`).
 - [x] Establish package naming (`com.kalogsc.feedbil`) and code style
   (`kotlin.code.style=official`).
 - [x] Add a minimal Compose app shell (`MainActivity` + `FeedbilTheme`).
-- [x] Add app name, launcher icon placeholder (default template icons,
-  intentionally kept), and string resources (pt-BR).
+- [x] Add app name, launcher icon, and string resources (pt-BR). The
+  default template icon was a placeholder during M1; it was replaced
+  post-MVP with the Feedbil logo (see the 2026-11-19 entry in
+  `DECISIONS.md`).
 - [x] Establish an OLED-friendly always-dark theme (decision recorded
   in `DECISIONS.md`).
 - [x] Basic project documentation: `README.md` with setup and
@@ -610,3 +612,10 @@ Everything else should be treated as a post-MVP proposal.
 
 **Status:** All eight criteria were met by 2026-11-19. The final manual device
 checks were run by the user and all passed; see the milestone 8 section above.
+
+### Post-MVP — launcher icon (2026-11-19)
+
+The template placeholder icon was replaced with the Feedbil logo (solid
+`#131313` background, white "f + RSS" mark in the adaptive safe zone). No
+app behavior changed; launcher and splash-screen appearance still needs a
+device check by the user. Rationale and alternatives: `DECISIONS.md`.

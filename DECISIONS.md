@@ -822,3 +822,40 @@ targets, TalkBack) cannot be proven by JVM tests.
 
 **Consequences:** Any check the user reports as unrun or failing stays listed
 as a limitation; nothing is claimed as verified without an actual result.
+
+## 2026-11-19 — Feedbil launcher icon replaces the template placeholder
+
+**Decision:** Replace the default Android Studio launcher icon with the
+supplied Feedbil logo as a **mark-only adaptive icon**: a solid `#131313`
+background and the white "f + RSS waves" mark scaled into the 66 dp
+adaptive safe zone of the 108 dp canvas. The "Feedbil" wordmark is omitted
+from the artwork. The same white-on-transparent PNG serves as the
+foreground and the Android 13 themed (monochrome) layer. Density-specific
+legacy fallback icons are regenerated from the same mark. The original
+`logo.png` is not kept in the repository after generation.
+
+**Alternatives considered:**
+
+1. Put the full PNG (mark + wordmark) into the adaptive foreground. Faithful
+   to the source artwork, but a launcher's circle/squircle mask clips the
+   wordmark, and fitting the whole tile into the safe zone makes the mark
+   small. The launcher already draws the app label below the icon.
+2. Ship legacy PNG icons only, with no adaptive layers. Simplest, but
+   ignores modern launcher shaping and the themed-icon API; with `minSdk`
+   26 there is no device reason to drop adaptive icons.
+3. Trace the raster mark into a vector drawable. Cleaner at any density,
+   but the source is raster and tracing adds effort and fidelity risk for
+   a one-off icon with no measurable benefit at the supported densities.
+
+**Rationale:** The safe zone prevents clipping across launcher shapes, the
+solid black background matches the supplied logo and the always-dark OLED
+theme, and omitting the wordmark avoids duplicating the launcher label.
+No new dependency, permission, or app-code change is needed. On Android 12+
+the system splash screen reuses the launcher icon automatically, so no
+separate splash asset is introduced.
+
+**Consequences:** `mipmap-anydpi-v26` still supplies the adaptive icon for
+both `ic_launcher` and `ic_launcher_round`; the template WebP fallbacks and
+template vector foreground were removed. Visual rendering by a launcher
+and the splash screen must be confirmed on a device by the user; the build,
+resource packaging, and unit tests can only prove the resources are valid.
