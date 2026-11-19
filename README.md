@@ -28,6 +28,15 @@ The MVP scope, milestones, and acceptance criteria are defined in
   run from Windows (`gradlew.bat` or Android Studio). Editing from WSL
   works, but Linux builds are not supported.
 
+### JDK location on this machine
+
+If `java` is not on `PATH` and `JAVA_HOME` is unset, point it at the
+Android Studio JBR (OpenJDK 25) for the commands below:
+
+```powershell
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+```
+
 ## Build and test
 
 From Windows (PowerShell or cmd):

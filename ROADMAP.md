@@ -110,12 +110,13 @@ approved choice in `DECISIONS.md`.
 | Background work | No automatic work; manual refresh only; WorkManager-based background refresh | Predictability and battery vs freshness and platform constraints |
 | Testing | Unit, instrumented, UI, and integration test scope | Confidence vs development time and setup |
 
-Note: the toolchain baseline inherited from the Android Studio project
-template (`minSdk = 24`, single `:app` module, AGP 9.5.1 with built-in
-Kotlin, `compileSdk`/`targetSdk` 37, Java 11, Gradle 9.6, configuration
-cache, `kotlin.code.style=official`) is recorded in `DECISIONS.md`
-under "Pending discussion". It has not been actively approved and is
-excluded from the table above until that discussion happens.
+Note: the toolchain baseline is confirmed and recorded in
+`DECISIONS.md` (2026-11-18 entries): `minSdk = 26` (raised from the
+template's 24 for native `java.time`), single `:app` module, AGP 9.5.1
+with built-in Kotlin, `compileSdk`/`targetSdk` 37, Java 11, Gradle 9.6,
+configuration cache, `kotlin.code.style=official`. Light layered
+architecture (Compose UI + ViewModel + repositories) with manual
+dependency construction was also approved.
 
 Do not decide all items up front. Resolve only what is needed for the
 next milestone.
@@ -124,17 +125,17 @@ next milestone.
 
 ### Milestone 1 — Project foundation
 
-**Status:** Completed except for Windows re-verification and
-device/emulator launch verification. The project lived on the WSL
+**Status:** Completed (2026-11-18). The project lived on the WSL
 filesystem at inception; on 2026-11-18 it moved to `C:\feedbil` on
-Windows, so builds and tests must run on the Windows side
-(`gradlew.bat` or Android Studio).
+Windows, and the Windows-side build, unit tests, and on-device launch
+were verified there. The toolchain baseline discussion concluded the
+same day (`DECISIONS.md`).
 
 **Work**
 
 - [x] Create the Android project and verify it builds and unit tests
-  pass (verified on Linux 2026-11-18, pre-move; re-verification on
-  Windows pending).
+  pass (verified on Linux 2026-11-18, pre-move; re-verified on Windows
+  2026-11-18).
 - [x] Establish package naming (`com.kalogsc.feedbil`) and code style
   (`kotlin.code.style=official`).
 - [x] Add a minimal Compose app shell (`MainActivity` + `FeedbilTheme`).
@@ -145,19 +146,22 @@ Windows, so builds and tests must run on the Windows side
 - [x] Basic project documentation: `README.md` with setup and
   build/test commands, `DECISIONS.md`, `LIMITATIONS.md`.
 - [x] Initialize git and keep changes in reviewable commits.
-- [ ] Verify the app launches on an emulator/device (Windows side; dev
-  machine has no usable Linux emulator).
-- [ ] Discuss and confirm the template-inherited toolchain baseline
-  (`DECISIONS.md` — pending).
-- [ ] Add a simple navigation structure only if required by the
-  approved screen flow.
+- [x] Verify the app launches on an emulator/device (verified on a
+  physical device, SM-S928B running Android 17, on 2026-11-18 on the
+  Windows side).
+- [x] Discuss and confirm the template-inherited toolchain baseline
+  (resolved 2026-11-18; recorded in `DECISIONS.md` — `minSdk` raised
+  to 26, everything else confirmed as-is).
+- [x] Add a simple navigation structure only if required by the
+  approved screen flow (not required; deferred to Milestones 3/4 —
+  approved 2026-11-18).
 
 **Acceptance criteria**
 
 - App compiles and unit tests pass (verified 2026-11-18 on Linux,
-  pre-move; re-verification on Windows pending).
+  pre-move, and re-verified on Windows).
 - A basic screen renders in the agreed always-dark OLED theme; launch
-  verification on a device/emulator is pending on the Windows side.
+  verified on a physical device (SM-S928B, Android 17) on 2026-11-18.
 - UI text is sourced from string resources (no hard-coded user-facing
   strings).
 - Build and test commands are documented in `README.md`.
@@ -165,12 +169,11 @@ Windows, so builds and tests must run on the Windows side
 
 **Decision gate** — Resolve minimum Android version, project structure,
 architecture approach, theme behavior, and initial dependencies.
-
-Theme behavior is resolved (always-dark OLED; see `DECISIONS.md`).
-Minimum Android version, project structure, architecture approach, and
-initial dependencies are inherited from the template and recorded as
-pending in `DECISIONS.md`; resolve the baseline discussion before or as
-part of Milestone 2.
+**Resolved 2026-11-18** (see `DECISIONS.md`): theme behavior is
+always-dark OLED; `minSdk = 26` with the rest of the template toolchain
+confirmed as-is; single `:app` module; light layered architecture
+(Compose UI + ViewModel + repositories); manual dependency
+construction; no new dependencies beyond the template set.
 
 ### Milestone 2 — Domain model and local storage
 
