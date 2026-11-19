@@ -17,6 +17,12 @@ interface FeedDao {
     @Query("SELECT * FROM feeds WHERE id = :id")
     suspend fun findById(id: Long): FeedEntity?
 
+    @Query("UPDATE feeds SET name = :name, url = :url WHERE id = :id")
+    suspend fun update(id: Long, name: String, url: String): Int
+
+    @Query("SELECT COUNT(*) FROM feeds WHERE url = :url AND id != :excludedId")
+    suspend fun countByUrl(url: String, excludedId: Long): Int
+
     @Query("DELETE FROM feeds WHERE id = :id")
     suspend fun deleteById(id: Long)
 

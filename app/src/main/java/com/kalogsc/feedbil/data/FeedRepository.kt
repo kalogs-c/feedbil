@@ -19,6 +19,23 @@ class FeedRepository(
 
     suspend fun findById(id: Long): Feed? = feedDao.findById(id)?.toDomain()
 
+    /**
+     * Renames a feed and/or changes its URL. Returns `false` when the feed no
+     * longer exists. A URL already used by another feed still violates the
+     * unique index; callers check [isUrlTaken] first and map the conflict to a
+     * user-facing error.
+     */
+    suspend fun update(id: Long, name: String, url: String): Boolean =
+        feedDao.update(id, name, url) > 0
+
+    /**
+     * True when [url] belongs to a stored feed, ignoring [exceptFeedId] so an
+     * edited feed does not conflict with itself. Unsaved ids are `0`, while
+     * stored ids start at `1`, so the default excludes nothing.
+     */
+    suspend fun isUrlTaken(url: String, exceptFeedId: Long = Feed.UNSAVED_ID): Boolean =
+        feedDao.countByUrl(url, exceptFeedId) > 0
+
     suspend fun delete(id: Long) = feedDao.deleteById(id)
 
     suspend fun count(): Int = feedDao.count()
