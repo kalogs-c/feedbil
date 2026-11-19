@@ -11,7 +11,7 @@ import com.kalogsc.feedbil.data.local.entity.FeedEntity
  */
 @Database(
     entities = [FeedEntity::class, ArticleEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class FeedbilDatabase : RoomDatabase() {

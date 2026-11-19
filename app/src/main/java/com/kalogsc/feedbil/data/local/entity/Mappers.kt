@@ -1,6 +1,7 @@
 package com.kalogsc.feedbil.data.local.entity
 
 import com.kalogsc.feedbil.domain.model.Article
+import com.kalogsc.feedbil.domain.model.ArticleListItem
 import com.kalogsc.feedbil.domain.model.Feed
 
 fun FeedEntity.toDomain(): Feed = Feed(
@@ -8,6 +9,7 @@ fun FeedEntity.toDomain(): Feed = Feed(
     name = name,
     url = url,
     addedAt = addedAt,
+    lastFetchedAt = lastFetchedAt,
 )
 
 fun Feed.toEntity(): FeedEntity = FeedEntity(
@@ -15,6 +17,7 @@ fun Feed.toEntity(): FeedEntity = FeedEntity(
     name = name,
     url = url,
     addedAt = addedAt,
+    lastFetchedAt = lastFetchedAt,
 )
 
 fun ArticleEntity.toDomain(): Article = Article(
@@ -41,4 +44,9 @@ fun Article.toEntity(): ArticleEntity = ArticleEntity(
     author = author,
     publishedAt = publishedAt,
     lastReadAt = lastReadAt,
+)
+
+fun ArticleWithFeedEntity.toDomain(): ArticleListItem = ArticleListItem(
+    article = article.toDomain(),
+    feedName = feedName,
 )

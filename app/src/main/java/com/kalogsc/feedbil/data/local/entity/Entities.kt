@@ -1,5 +1,6 @@
 package com.kalogsc.feedbil.data.local.entity
 
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -14,6 +15,7 @@ data class FeedEntity(
     val name: String,
     val url: String,
     val addedAt: Long,
+    val lastFetchedAt: Long? = null,
 )
 
 /**
@@ -49,4 +51,10 @@ data class ArticleEntity(
     val author: String?,
     val publishedAt: Long,
     val lastReadAt: Long?,
+)
+
+/** Read model for the combined article list: the article plus its feed name. */
+data class ArticleWithFeedEntity(
+    @Embedded val article: ArticleEntity,
+    val feedName: String,
 )

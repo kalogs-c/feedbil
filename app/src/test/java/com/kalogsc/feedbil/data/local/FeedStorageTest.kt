@@ -56,6 +56,16 @@ class FeedStorageTest {
     }
 
     @Test
+    fun `a successful refresh records its time`() = runBlocking {
+        val id = feedDao.insert(feedEntity())
+
+        assertNull(feedDao.findById(id)?.lastFetchedAt)
+        feedDao.markFetched(id = id, fetchedAtEpochMillis = 4_242L)
+
+        assertEquals(4_242L, feedDao.findById(id)?.lastFetchedAt)
+    }
+
+    @Test
     fun `deleting a feed deletes its articles but keeps other feeds' articles`() = runBlocking {
         val removedFeed = feedDao.insert(feedEntity(url = "https://removed.example.com/rss"))
         val keptFeed = feedDao.insert(feedEntity(url = "https://kept.example.com/rss"))

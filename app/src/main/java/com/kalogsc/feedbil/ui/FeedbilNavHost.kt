@@ -64,6 +64,7 @@ fun FeedbilNavHost(
             val viewModel: FeedFormViewModel = viewModel {
                 FeedFormViewModel(
                     feedRepository = container.feedRepository,
+                    articleRepository = container.articleRepository,
                     feedFetcher = container.feedFetcher,
                     feedId = feedId,
                 )

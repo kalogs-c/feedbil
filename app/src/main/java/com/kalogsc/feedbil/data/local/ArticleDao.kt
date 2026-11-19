@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.kalogsc.feedbil.data.local.entity.ArticleEntity
+import com.kalogsc.feedbil.data.local.entity.ArticleWithFeedEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArticleDao {
@@ -19,6 +21,17 @@ interface ArticleDao {
 
     @Query("SELECT * FROM articles WHERE feedId = :feedId ORDER BY publishedAt DESC, id DESC")
     suspend fun getByFeed(feedId: Long): List<ArticleEntity>
+
+    /** Combined list across feeds, newest first, with the current feed name. */
+    @Query(
+        """
+        SELECT articles.*, feeds.name AS feedName
+        FROM articles
+        INNER JOIN feeds ON feeds.id = articles.feedId
+        ORDER BY articles.publishedAt DESC, articles.id DESC
+        """,
+    )
+    fun observeAllWithFeed(): Flow<List<ArticleWithFeedEntity>>
 
     @Query("SELECT * FROM articles WHERE id = :id")
     suspend fun findById(id: Long): ArticleEntity?

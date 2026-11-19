@@ -2,8 +2,10 @@ package com.kalogsc.feedbil.ui.feeds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kalogsc.feedbil.data.ArticleRepository
 import com.kalogsc.feedbil.data.DuplicateFeedUrlException
 import com.kalogsc.feedbil.data.FeedRepository
+import com.kalogsc.feedbil.data.remote.FeedArticleMapper
 import com.kalogsc.feedbil.data.remote.FeedFetchResult
 import com.kalogsc.feedbil.data.remote.FeedFetcher
 import com.kalogsc.feedbil.domain.FeedInputError
@@ -44,12 +46,15 @@ data class FeedFormUiState(
 /**
  * Add/edit form state. Saving validates the fields, rejects a URL already used
  * by another feed, and - when the URL is new or changed - fetches it once to
- * confirm it is a reachable feed before storing anything.
+ * confirm it is a reachable feed before storing anything. The same fetch is
+ * reused to store the feed's initial articles.
  */
 class FeedFormViewModel(
     private val feedRepository: FeedRepository,
+    private val articleRepository: ArticleRepository,
     private val feedFetcher: FeedFetcher,
     private val feedId: Long = Feed.UNSAVED_ID,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
     private val isNew = feedId == Feed.UNSAVED_ID
@@ -107,26 +112,29 @@ class FeedFormViewModel(
             }
 
             val urlNeedsCheck = isNew || url != storedUrl
+            var fetched: FeedFetchResult.Success? = null
             if (urlNeedsCheck) {
-                val fetchError = fetchError(url)
+                val result = feedFetcher.fetch(url)
+                val fetchError = fetchError(result)
                 if (fetchError != null) {
                     failWith(fetchError)
                     return@launch
                 }
+                fetched = result as? FeedFetchResult.Success
             }
 
             try {
-                val stored = if (isNew) {
-                    feedRepository.add(name, url)
-                    true
+                val storedFeedId = if (isNew) {
+                    feedRepository.add(name, url).id
                 } else {
-                    feedRepository.update(feedId, name, url)
+                    if (feedRepository.update(feedId, name, url)) feedId else null
                 }
-                if (stored) {
-                    _uiState.update { it.copy(isSaving = false, saved = true) }
-                } else {
+                if (storedFeedId == null) {
                     failWith(FeedSubmitError.FeedMissing)
+                    return@launch
                 }
+                fetched?.let { storeInitialArticles(storedFeedId, it) }
+                _uiState.update { it.copy(isSaving = false, saved = true) }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (duplicate: DuplicateFeedUrlException) {
@@ -155,16 +163,36 @@ class FeedFormViewModel(
         }
     }
 
-    private suspend fun fetchError(url: String): FeedSubmitError? =
-        when (val result = feedFetcher.fetch(url)) {
-            is FeedFetchResult.Success -> null
-            FeedFetchResult.InvalidUrl -> FeedSubmitError.InvalidUrl
-            FeedFetchResult.NotAFeed -> FeedSubmitError.NotAFeed
-            FeedFetchResult.Network -> FeedSubmitError.Network
-            FeedFetchResult.Timeout -> FeedSubmitError.Timeout
-            FeedFetchResult.Unknown -> FeedSubmitError.Unknown
-            is FeedFetchResult.HttpError -> FeedSubmitError.HttpError(result.code)
+    private fun fetchError(result: FeedFetchResult): FeedSubmitError? = when (result) {
+        is FeedFetchResult.Success -> null
+        FeedFetchResult.InvalidUrl -> FeedSubmitError.InvalidUrl
+        FeedFetchResult.NotAFeed -> FeedSubmitError.NotAFeed
+        FeedFetchResult.Network -> FeedSubmitError.Network
+        FeedFetchResult.Timeout -> FeedSubmitError.Timeout
+        FeedFetchResult.Unknown -> FeedSubmitError.Unknown
+        is FeedFetchResult.HttpError -> FeedSubmitError.HttpError(result.code)
+    }
+
+    /**
+     * The feed is already saved at this point. A storage problem here is not a
+     * save failure: the next refresh will try again, so the user is not shown a
+     * misleading "feed was not saved" message.
+     */
+    private suspend fun storeInitialArticles(
+        feedId: Long,
+        fetched: FeedFetchResult.Success,
+    ) {
+        try {
+            val observedAt = clock()
+            val articles = FeedArticleMapper.map(feedId, fetched.items, observedAt)
+            articleRepository.store(feedId, articles)
+            feedRepository.markFetched(feedId, observedAt)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            // Keep the saved feed; a manual or next-launch refresh fills it.
         }
+    }
 
     private fun failWith(error: FeedSubmitError) {
         _uiState.update { it.copy(isSaving = false, submitError = error) }

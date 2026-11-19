@@ -55,4 +55,9 @@ class FeedRepository(
     suspend fun delete(id: Long) = feedDao.deleteById(id)
 
     suspend fun count(): Int = feedDao.count()
+
+    /** Records a successful refresh for [id]. */
+    suspend fun markFetched(id: Long, fetchedAtEpochMillis: Long) {
+        feedDao.markFetched(id, fetchedAtEpochMillis)
+    }
 }

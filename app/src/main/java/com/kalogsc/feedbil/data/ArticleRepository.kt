@@ -6,6 +6,9 @@ import com.kalogsc.feedbil.data.local.entity.toDomain
 import com.kalogsc.feedbil.data.local.entity.toEntity
 import com.kalogsc.feedbil.domain.RetentionPolicy
 import com.kalogsc.feedbil.domain.model.Article
+import com.kalogsc.feedbil.domain.model.ArticleListItem
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Stores articles and enforces retention. Callers never touch the database
@@ -52,6 +55,14 @@ class ArticleRepository(
 
     suspend fun getByFeed(feedId: Long): List<Article> =
         articleDao.getByFeed(feedId).map { it.toDomain() }
+
+    /**
+     * Combined list across all feeds, newest first. Re-emits when articles or
+     * feed names change, so refresh, read state, renames, and deletes all show
+     * up without a manual reload.
+     */
+    fun observeAllWithFeed(): Flow<List<ArticleListItem>> =
+        articleDao.observeAllWithFeed().map { rows -> rows.map { it.toDomain() } }
 
     suspend fun countByFeed(feedId: Long): Int = articleDao.countByFeed(feedId)
 

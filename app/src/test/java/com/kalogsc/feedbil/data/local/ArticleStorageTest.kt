@@ -1,6 +1,7 @@
 package com.kalogsc.feedbil.data.local
 
 import android.content.Context
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -242,6 +243,29 @@ class ArticleStorageTest {
 
         assertEquals(100, articleDao.countByFeed(trimmed))
         assertEquals(101, articleDao.countByFeed(untouched))
+    }
+
+    @Test
+    fun `the combined list is newest first and carries the current feed names`() = runBlocking {
+        val first = feedDao.insert(
+            feedEntity(name = "First feed", url = "https://first.example.com/rss"),
+        )
+        val second = feedDao.insert(
+            feedEntity(name = "Second feed", url = "https://second.example.com/rss"),
+        )
+        articleDao.insertAll(
+            listOf(
+                articleEntity(feedId = first, link = "https://first.example.com/1", publishedAt = 10),
+                articleEntity(feedId = second, link = "https://second.example.com/1", publishedAt = 30),
+                articleEntity(feedId = first, link = "https://first.example.com/2", publishedAt = 20),
+            ),
+        )
+
+        val rows = articleDao.observeAllWithFeed().first()
+
+        assertEquals(listOf(30L, 20L, 10L), rows.map { it.article.publishedAt })
+        assertEquals(listOf(second, first, first), rows.map { it.article.feedId })
+        assertEquals(listOf("Second feed", "First feed", "First feed"), rows.map { it.feedName })
     }
 
     @Test

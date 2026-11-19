@@ -1,15 +1,19 @@
 package com.kalogsc.feedbil.ui.feeds
 
 import com.kalogsc.feedbil.MainDispatcherRule
+import com.kalogsc.feedbil.data.ArticleRepository
 import com.kalogsc.feedbil.data.FeedRepository
 import com.kalogsc.feedbil.data.local.FeedbilDatabase
 import com.kalogsc.feedbil.data.local.createInMemoryDatabase
 import com.kalogsc.feedbil.data.local.testContext
 import com.kalogsc.feedbil.data.remote.FeedFetcher
+import com.kalogsc.feedbil.data.remote.rssItem
 import com.kalogsc.feedbil.domain.FeedInputError
+import com.kalogsc.feedbil.domain.model.Feed
 import com.prof18.rssparser.exception.HttpException
 import com.prof18.rssparser.exception.RssParsingException
 import com.prof18.rssparser.model.RssChannel
+import com.prof18.rssparser.model.RssItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -31,6 +35,7 @@ class FeedFormViewModelTest {
 
     private val database: FeedbilDatabase = createInMemoryDatabase(testContext())
     private val repository = FeedRepository(database.feedDao()) { ADDED_AT }
+    private val articleRepository = ArticleRepository(database) { ADDED_AT }
 
     private val fetchedUrls = mutableListOf<String>()
     private var fetchOutcome: () -> RssChannel = { channel() }
@@ -39,6 +44,15 @@ class FeedFormViewModelTest {
         fetchOutcome()
     }
 
+    private fun viewModel(feedId: Long = Feed.UNSAVED_ID): FeedFormViewModel =
+        FeedFormViewModel(
+            feedRepository = repository,
+            articleRepository = articleRepository,
+            feedFetcher = fetcher,
+            feedId = feedId,
+            clock = { ADDED_AT },
+        )
+
     @After
     fun tearDown() {
         database.close()
@@ -46,7 +60,7 @@ class FeedFormViewModelTest {
 
     @Test
     fun `blank fields are reported without fetching`() = runBlocking {
-        val viewModel = FeedFormViewModel(repository, fetcher)
+        val viewModel = viewModel()
 
         viewModel.save()
 
@@ -60,7 +74,7 @@ class FeedFormViewModelTest {
     @Test
     fun `a url used by another feed is rejected before fetching`() = runBlocking {
         repository.add("Existing", EXISTING_URL)
-        val viewModel = FeedFormViewModel(repository, fetcher)
+        val viewModel = viewModel()
         viewModel.onNameChange("New")
         viewModel.onUrlChange(EXISTING_URL)
 
@@ -75,7 +89,7 @@ class FeedFormViewModelTest {
     @Test
     fun `an unreachable feed is not stored`() = runBlocking {
         fetchOutcome = { throw UnknownHostException("offline") }
-        val viewModel = FeedFormViewModel(repository, fetcher)
+        val viewModel = viewModel()
         viewModel.onNameChange("Example")
         viewModel.onUrlChange("https://example.com/rss")
 
@@ -89,7 +103,7 @@ class FeedFormViewModelTest {
     @Test
     fun `an http status is surfaced with its code`() = runBlocking {
         fetchOutcome = { throw HttpException(code = 404, message = "Not Found") }
-        val viewModel = FeedFormViewModel(repository, fetcher)
+        val viewModel = viewModel()
         viewModel.onNameChange("Example")
         viewModel.onUrlChange("https://example.com/rss")
 
@@ -102,7 +116,7 @@ class FeedFormViewModelTest {
 
     @Test
     fun `a valid feed is trimmed, verified, and stored`() = runBlocking {
-        val viewModel = FeedFormViewModel(repository, fetcher)
+        val viewModel = viewModel()
         viewModel.onNameChange("  Example Blog  ")
         viewModel.onUrlChange("  https://example.com/rss  ")
 
@@ -119,9 +133,51 @@ class FeedFormViewModelTest {
     }
 
     @Test
+    fun `adding a feed stores the articles from the validation fetch`() = runBlocking {
+        fetchOutcome = {
+            channel(
+                items = listOf(
+                    rssItem(link = "https://example.com/first", title = "First post"),
+                ),
+            )
+        }
+        val viewModel = viewModel()
+        viewModel.onNameChange("Example")
+        viewModel.onUrlChange("https://example.com/rss")
+
+        viewModel.save()
+
+        viewModel.awaitState { it.saved }
+        val feed = repository.getAll().single()
+        assertEquals(1, articleRepository.countByFeed(feed.id))
+        assertEquals(ADDED_AT, feed.lastFetchedAt)
+    }
+
+    @Test
+    fun `a changed url also stores the new feed's articles`() = runBlocking {
+        val feed = repository.add("Name", EXISTING_URL)
+        fetchOutcome = {
+            channel(
+                items = listOf(
+                    rssItem(link = "https://other.example.com/first", title = "First post"),
+                ),
+            )
+        }
+        val viewModel = viewModel(feed.id)
+        viewModel.awaitState { !it.isLoadingFeed }
+
+        viewModel.onUrlChange("https://other.example.com/rss")
+        viewModel.save()
+
+        viewModel.awaitState { it.saved }
+        assertEquals(1, articleRepository.countByFeed(feed.id))
+        assertEquals(ADDED_AT, repository.findById(feed.id)?.lastFetchedAt)
+    }
+
+    @Test
     fun `renaming a feed does not fetch again`() = runBlocking {
         val feed = repository.add("Old name", EXISTING_URL)
-        val viewModel = FeedFormViewModel(repository, fetcher, feed.id)
+        val viewModel = viewModel(feed.id)
         viewModel.awaitState { !it.isLoadingFeed }
 
         viewModel.onNameChange("New name")
@@ -136,7 +192,7 @@ class FeedFormViewModelTest {
     fun `a changed url is verified before saving`() = runBlocking {
         val feed = repository.add("Name", EXISTING_URL)
         fetchOutcome = { throw RssParsingException("not a feed", cause = null) }
-        val viewModel = FeedFormViewModel(repository, fetcher, feed.id)
+        val viewModel = viewModel(feed.id)
         viewModel.awaitState { !it.isLoadingFeed }
 
         viewModel.onUrlChange("https://other.example.com/rss")
@@ -150,7 +206,7 @@ class FeedFormViewModelTest {
 
     @Test
     fun `editing a feed that no longer exists reports it`() = runBlocking {
-        val viewModel = FeedFormViewModel(repository, fetcher, feedId = 99L)
+        val viewModel = viewModel(feedId = 99L)
 
         val state = viewModel.awaitState { it.submitError != null }
         assertEquals(FeedSubmitError.FeedMissing, state.submitError)
@@ -160,14 +216,14 @@ class FeedFormViewModelTest {
         predicate: (FeedFormUiState) -> Boolean,
     ): FeedFormUiState = withTimeout(AWAIT_TIMEOUT_MS) { uiState.first(predicate) }
 
-    private fun channel() = RssChannel(
+    private fun channel(items: List<RssItem> = emptyList()) = RssChannel(
         title = "Example Blog",
         link = null,
         description = null,
         image = null,
         lastBuildDate = null,
         updatePeriod = null,
-        items = emptyList(),
+        items = items,
         itunesChannelData = null,
         youtubeChannelData = null,
     )

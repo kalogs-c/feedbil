@@ -25,6 +25,9 @@ interface FeedDao {
     @Query("UPDATE feeds SET name = :name, url = :url WHERE id = :id")
     suspend fun update(id: Long, name: String, url: String): Int
 
+    @Query("UPDATE feeds SET lastFetchedAt = :fetchedAtEpochMillis WHERE id = :id")
+    suspend fun markFetched(id: Long, fetchedAtEpochMillis: Long): Int
+
     @Query("SELECT COUNT(*) FROM feeds WHERE url = :url AND id != :excludedId")
     suspend fun countByUrl(url: String, excludedId: Long): Int
 
