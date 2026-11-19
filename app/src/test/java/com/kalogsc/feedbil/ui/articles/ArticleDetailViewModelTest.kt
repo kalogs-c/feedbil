@@ -147,9 +147,11 @@ class ArticleDetailViewModelTest {
         assertFalse(state.loadFailed)
     }
 
+    // An article from a previous session may already be read, so wait for this
+    // open's timestamp instead of just for isRead becoming true.
     private suspend fun awaitReadArticle(articleId: Long) = withTimeout(AWAIT_TIMEOUT_MS) {
         repository.observeAllWithFeed().first { items ->
-            items.any { it.article.id == articleId && it.article.isRead }
+            items.any { it.article.id == articleId && it.article.lastReadAt == NOW }
         }.first { it.article.id == articleId }.article
     }
 
