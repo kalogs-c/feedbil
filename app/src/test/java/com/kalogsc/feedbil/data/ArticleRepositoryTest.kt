@@ -175,6 +175,44 @@ class ArticleRepositoryTest {
     }
 
     @Test
+    fun `pruneAll trims each feed to a hundred articles and keeps unread ones`() = runBlocking {
+        val feeds = listOf(
+            createFeed("https://first.example.com/rss") to "first",
+            createFeed("https://second.example.com/rss") to "second",
+        )
+        val minute = Duration.ofMinutes(1).toMillis()
+        articleDao.insertAll(
+            feeds.flatMap { (feedId, host) ->
+                val unread = (1..100).map { index ->
+                    articleEntity(
+                        feedId = feedId,
+                        link = "https://$host.example.com/unread-$index",
+                        publishedAt = now - (101 - index) * minute,
+                    )
+                }
+                // Read articles are newer, so only unread-first retention keeps them out.
+                val read = (1..5).map { index ->
+                    articleEntity(
+                        feedId = feedId,
+                        link = "https://$host.example.com/read-$index",
+                        publishedAt = now - index * minute,
+                        lastReadAt = now - index * minute,
+                    )
+                }
+                unread + read
+            },
+        )
+
+        repository.pruneAll()
+
+        feeds.forEach { (feedId, host) ->
+            val links = repository.getByFeed(feedId).map { it.link }
+            assertEquals(100, links.size)
+            assertEquals((100 downTo 1).map { "https://$host.example.com/unread-$it" }, links)
+        }
+    }
+
+    @Test
     fun `marking an article read exposes it as read`() = runBlocking {
         val feedId = createFeed()
         repository.store(feedId, listOf(article(feedId = feedId, link = "https://example.com/1")))
