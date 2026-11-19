@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,6 +97,7 @@ fun ArticleListScreen(
     modifier: Modifier = Modifier,
 ) {
     var showFailureDetails by remember { mutableStateOf(false) }
+    val refreshingLabel = stringResource(R.string.articles_refreshing)
     val failureMessage = when {
         state.refreshFailed -> stringResource(R.string.refresh_failed_generic)
         state.failures.isNotEmpty() -> pluralStringResource(
@@ -116,7 +118,9 @@ fun ArticleListScreen(
                     IconButton(onClick = onRefresh, enabled = !state.isRefreshing) {
                         if (state.isRefreshing) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .semantics { contentDescription = refreshingLabel },
                                 strokeWidth = 2.dp,
                             )
                         } else {
@@ -142,7 +146,11 @@ fun ArticleListScreen(
                 .fillMaxSize(),
         ) {
             if (state.isRefreshing && state.articles.isNotEmpty()) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = refreshingLabel },
+                )
             }
             failureMessage?.let { message ->
                 FailureBanner(
@@ -299,14 +307,18 @@ private fun ArticleList(
 @Composable
 private fun ArticleRow(item: ArticleListItem, onClick: () -> Unit) {
     val unread = !item.article.isRead
-    val unreadLabel = stringResource(R.string.article_unread)
+    val readStateLabel = stringResource(
+        if (unread) R.string.article_unread else R.string.article_read,
+    )
 
     ListItem(
-        modifier = Modifier.clickable(
-            onClick = onClick,
-            role = Role.Button,
-            onClickLabel = stringResource(R.string.action_open_article),
-        ),
+        modifier = Modifier
+            .clickable(
+                onClick = onClick,
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.action_open_article),
+            )
+            .semantics { stateDescription = readStateLabel },
         leadingContent = {
             Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
                 if (unread) {
@@ -314,8 +326,7 @@ private fun ArticleRow(item: ArticleListItem, onClick: () -> Unit) {
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .semantics { contentDescription = unreadLabel },
+                            .background(MaterialTheme.colorScheme.primary),
                     )
                 }
             }

@@ -51,6 +51,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -124,6 +127,7 @@ fun ArticleDetailScreen(
     val sourceUrl = remember(state.article) {
         state.article?.link?.let(HttpUrlValidator::sanitize)
     }
+    val loadingLabel = stringResource(R.string.article_detail_loading)
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -157,7 +161,9 @@ fun ArticleDetailScreen(
             Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                 when {
                     state.isLoading -> CenteredState {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            modifier = Modifier.semantics { contentDescription = loadingLabel },
+                        )
                     }
 
                     state.notFound -> CenteredState {
@@ -215,7 +221,13 @@ private fun ShareMenu(
     onShareAi: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    IconButton(onClick = { expanded = true }) {
+    val menuStateLabel = stringResource(
+        if (expanded) R.string.share_menu_expanded else R.string.share_menu_collapsed,
+    )
+    IconButton(
+        onClick = { expanded = true },
+        modifier = Modifier.semantics { stateDescription = menuStateLabel },
+    ) {
         Icon(
             imageVector = Icons.Filled.Share,
             contentDescription = stringResource(R.string.action_share),

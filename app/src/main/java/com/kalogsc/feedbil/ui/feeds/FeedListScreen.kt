@@ -41,6 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -233,17 +236,21 @@ private fun FeedRow(
             .clickable(
                 onClickLabel = stringResource(R.string.action_edit_feed),
                 onClick = onEdit,
+                role = Role.Button,
             ),
     )
 }
 
 @Composable
 private fun LoadingState(modifier: Modifier = Modifier) {
+    val loadingLabel = stringResource(R.string.feeds_loading)
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator()
+        CircularProgressIndicator(
+            modifier = Modifier.semantics { contentDescription = loadingLabel },
+        )
     }
 }
 

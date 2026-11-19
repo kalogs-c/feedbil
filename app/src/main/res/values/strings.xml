@@ -16,6 +16,7 @@
     <string name="action_remove">Remover</string>
     <string name="action_cancel">Cancelar</string>
     <string name="delete_feed_failed">Não foi possível remover o feed.</string>
+    <string name="feeds_loading">Carregando feeds…</string>
 
     <!-- Add/edit feed -->
     <string name="feed_form_add_title">Novo feed</string>
@@ -47,6 +48,7 @@
     <string name="action_open_feeds">Feeds</string>
     <string name="article_untitled">Sem título</string>
     <string name="article_unread">Não lido</string>
+    <string name="article_read">Lido</string>
     <string name="article_list_meta">%1$s · %2$s</string>
     <string name="articles_loading">Carregando artigos…</string>
     <string name="articles_refreshing">Atualizando feeds…</string>
@@ -76,6 +78,7 @@
     <string name="article_detail_not_found">Este artigo não existe mais.</string>
     <string name="article_detail_error_title">Não foi possível carregar o artigo</string>
     <string name="article_detail_error_description">Tente novamente em instantes.</string>
+    <string name="article_detail_loading">Carregando artigo…</string>
     <string name="article_detail_image">Imagem do artigo</string>
     <string name="action_open_original">Abrir original</string>
     <string name="action_open_article">Abrir artigo</string>
@@ -98,6 +101,8 @@
 
     <!-- Sharing -->
     <string name="action_share">Compartilhar</string>
+    <string name="share_menu_expanded">Opções de compartilhamento expandidas</string>
+    <string name="share_menu_collapsed">Opções de compartilhamento recolhidas</string>
     <string name="share_chooser_title">Compartilhar artigo</string>
     <string name="share_ai_action">Compartilhar com resumo de IA</string>
     <string name="share_without_summary">Compartilhar sem resumo</string>
