@@ -35,9 +35,10 @@ issues only; it is not a roadmap. Update it as milestones complete.
   feed works offline; changing its URL does not.
 - `http://` feeds are allowed, so feed requests can travel unencrypted
   (decided on purpose; see `DECISIONS.md`).
-- The feed and article-list screens have no instrumented UI tests: their
-  behavior is covered at the ViewModel level. No emulator or device was
-  available to verify the screens manually (2026-11-19).
+- The feed and article-list screens have no instrumented UI tests: behavior is
+  covered by ViewModel tests and Robolectric Compose tests that assert
+  accessible names and rendered states. No emulator or device was available to
+  the agent; manual device checks are delegated to the user.
 - The project builds with the Windows-installed Android SDK from the
   Windows side. Linux/WSL builds are not supported: the project resides
   on the Windows filesystem and the Windows SDK build-tools are not
@@ -100,3 +101,18 @@ issues only; it is not a roadmap. Update it as milestones complete.
 - The LiteRT-LM AAR ships 64-bit native libraries only (`arm64-v8a`, `x86_64`).
   On a 32-bit device the model can still download, but summary generation fails
   with a typed error instead of crashing the app.
+- App data is never backed up (`allowBackup="false"`). Uninstalling the app or
+  clearing its data permanently removes all feeds and articles; there is no
+  in-app account or server-side restore (decided on purpose; see
+  `DECISIONS.md`).
+- There is no proactive offline indicator. With no connection, stored articles
+  remain readable and the AI summary works once the model is present, but
+  images do not load and any refresh or feed addition fails with a localized
+  network/timeout error. No `ACCESS_NETWORK_STATE` permission is requested
+  (decided on purpose; see `DECISIONS.md`).
+- Compose UI tests run on the JVM with Robolectric and assert accessible names
+  and states; they are not a substitute for on-device TalkBack traversal.
+  Manual checks (dark theme, font scaling, TalkBack focus and announcements,
+  airplane mode, network interruption, real feeds, share targets, and AI
+  responsiveness) are run by the user; any check not reported as passing stays
+  unverified.

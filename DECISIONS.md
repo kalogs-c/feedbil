@@ -731,3 +731,93 @@ plain, non-clickable text, so embedded instructions in feed content cannot
 trigger navigation. A missing browser is swallowed rather than crashing the
 screen: a guarded `UriHandler` is provided around the detail content, so
 inline links and the "Abrir original" button share the same behavior.
+
+## 2026-11-19 — Milestone 8: local data, offline policy, and accessibility verification
+
+Four decisions were confirmed before M8 implementation.
+
+### App data is never backed up
+
+**Decision:** `android:allowBackup="false"`; the `fullBackupContent` and
+`dataExtractionRules` attributes and their XML files are removed. Neither the
+feeds/articles database nor any other app data leaves the device through
+Android Auto Backup or device-to-device transfer.
+
+**Alternatives considered:**
+
+1. Keep `allowBackup="true"` with rules excluding only `filesDir` (the M6
+   state) — gives automatic restore, but uploads the local-only feed and
+   article database to the user's cloud account, contradicting the stated
+   constraint that feeds and articles stay local.
+2. Keep platform backup but add rules excluding the database as well — more
+   configuration, same final behavior as disabling backup, with rules that
+   must be kept in sync with the schema.
+
+**Rationale:** "Keep feeds and articles local; no account or cloud sync" is a
+product constraint. Since the app has no account or server-side restore,
+backup offers no recovery path the user controls. This supersedes the M6
+choice to exclude only the model from backup.
+
+**Consequences:** App data is lost if the app is uninstalled or its data is
+cleared. This is recorded in `LIMITATIONS.md`. The model was already excluded
+from backup; that exclusion is now redundant and removed with the rules.
+
+### Offline behavior relies on typed errors, not connectivity state
+
+**Decision:** No `ACCESS_NETWORK_STATE` permission and no offline banner or
+connectivity observer are added. Reading from stored data keeps working
+offline; any operation that needs the network reports a typed, localized error
+(`FeedFetchResult.Network`/`Timeout` mapped to `error_network`/`error_timeout`,
+the partial-failure banner, and the feed-form submit error).
+
+**Alternatives considered:**
+
+1. Add a `ConnectivityManager` observer and a global offline state/banner —
+   clearer proactive feedback, but a new permission, state plumbing in every
+   screen, and more tests for a requirement already met reactively.
+2. Auto-retry queued refreshes when connectivity returns — battery and
+   complexity cost, and a background trigger is explicitly deferred.
+
+**Rationale:** M8's acceptance criterion is that core flows work offline
+except refresh, which the existing storage-backed reading path already
+satisfies. The smallest change that verifies and documents this is preferred.
+
+**Consequences:** There is no proactive "you are offline" message; the user
+sees an error only when they attempt a network operation. Offline reading and
+image behavior are documented in `LIMITATIONS.md`.
+
+### Accessibility verification: fixes plus JVM Compose tests
+
+**Decision:** Fix the concrete semantics gaps found in the M8 audit (named
+loading indicators, refreshing state, read/unread state, share-menu expanded
+state, feed-row button role) and add Robolectric-based Compose UI tests that
+assert accessible names and key UI states. Compose test dependencies move to
+`testImplementation` so the suite runs with `:app:testDebugUnitTest`.
+
+**Alternatives considered:**
+
+1. Fixes plus a documented manual/static audit only — smallest change, but no
+   automated regression guard for semantics.
+2. Instrumented `androidTest` Compose tests — closest to real TalkBack, but no
+   device was available to the agent, so the suite could not be verified here.
+
+**Rationale:** The roadmap's testing strategy calls for Compose/UI tests, and
+"accessibility basics are checked" needs repeatable evidence. Robolectric
+Compose tests provide deterministic coverage without hardware; manual device
+checks are supplied by the user and recorded separately.
+
+**Consequences:** New strings are added to `strings.xml` (pt-BR). The test rule
+setup is validated with a smoke test before the full suite is written.
+
+### Manual device checks
+
+**Decision:** The user runs the M8 manual checklist (dark theme, font scaling,
+TalkBack focus/announcements, airplane mode, network interruption, real feeds,
+share targets) because no emulator or device is available to the agent.
+Findings are fed back into fixes and `LIMITATIONS.md`.
+
+**Rationale:** Several acceptance items (on-device responsiveness, real share
+targets, TalkBack) cannot be proven by JVM tests.
+
+**Consequences:** Any check the user reports as unrun or failing stays listed
+as a limitation; nothing is claimed as verified without an actual result.

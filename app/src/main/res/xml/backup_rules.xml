@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<full-backup-content>
-    <!-- The downloadable AI model lives in filesDir. It is public and
-         re-downloadable, and far too large to back up. Feeds and articles are
-         in the database directory and are still backed up. -->
-    <exclude domain="file" path="." />
-</full-backup-content>
