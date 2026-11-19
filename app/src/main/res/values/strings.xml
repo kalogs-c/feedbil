@@ -1,4 +1,44 @@
 <resources>
     <string name="app_name">Feedbil</string>
-    <string name="home_placeholder_description">Seu leitor de RSS local está em desenvolvimento.</string>
+
+    <!-- Feed list -->
+    <string name="feeds_title">Feeds</string>
+    <string name="feed_list_empty_title">Nenhum feed ainda</string>
+    <string name="feed_list_empty_description">Adicione um feed informando um nome e o endereço RSS.</string>
+    <string name="feed_list_error_title">Não foi possível carregar seus feeds</string>
+    <string name="feed_list_error_description">Tente novamente em instantes.</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="action_add_feed">Adicionar feed</string>
+    <string name="action_edit_feed">Editar feed</string>
+    <string name="action_delete_feed">Remover feed</string>
+    <string name="delete_feed_title">Remover “%1$s”?</string>
+    <string name="delete_feed_message">Os artigos guardados deste feed também serão removidos.</string>
+    <string name="action_remove">Remover</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="delete_feed_failed">Não foi possível remover o feed.</string>
+
+    <!-- Add/edit feed -->
+    <string name="feed_form_add_title">Novo feed</string>
+    <string name="feed_form_edit_title">Editar feed</string>
+    <string name="feed_form_name_label">Nome</string>
+    <string name="feed_form_url_label">Endereço do feed</string>
+    <string name="feed_form_url_placeholder">https://exemplo.com/feed.xml</string>
+    <string name="action_save">Salvar</string>
+    <string name="action_back">Voltar</string>
+    <string name="feed_form_checking">Verificando o feed…</string>
+    <string name="feed_form_loading">Carregando…</string>
+
+    <!-- Validation and network errors -->
+    <string name="error_name_blank">Informe um nome para o feed.</string>
+    <string name="error_name_too_long">Use no máximo %1$d caracteres.</string>
+    <string name="error_url_blank">Informe o endereço do feed.</string>
+    <string name="error_url_invalid">Use um endereço http:// ou https:// válido.</string>
+    <string name="error_duplicate_url">Este feed já está na sua lista.</string>
+    <string name="error_not_a_feed">Este endereço não parece ser um feed RSS ou Atom.</string>
+    <string name="error_http">O servidor respondeu com o erro %1$d.</string>
+    <string name="error_network">Não foi possível conectar. Verifique sua internet e tente novamente.</string>
+    <string name="error_timeout">O servidor demorou demais para responder. Tente novamente.</string>
+    <string name="error_unknown">Não foi possível verificar o feed. Tente novamente.</string>
+    <string name="error_feed_missing">Este feed não existe mais.</string>
+    <string name="error_storage">Não foi possível salvar o feed.</string>
 </resources>
