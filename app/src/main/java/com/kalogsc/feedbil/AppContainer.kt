@@ -2,6 +2,8 @@ package com.kalogsc.feedbil
 
 import android.content.Context
 import androidx.room.Room
+import com.kalogsc.feedbil.ai.LiteRtArticleSummarizer
+import com.kalogsc.feedbil.ai.ModelManager
 import com.kalogsc.feedbil.data.ArticleRepository
 import com.kalogsc.feedbil.data.FeedRefreshService
 import com.kalogsc.feedbil.data.FeedRepository
@@ -10,6 +12,8 @@ import com.kalogsc.feedbil.data.local.MIGRATION_1_2
 import com.kalogsc.feedbil.data.remote.FeedFetcher
 import com.kalogsc.feedbil.data.remote.FeedHttp
 import com.prof18.rssparser.RssParserBuilder
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 /**
  * Manual dependency container (see `DECISIONS.md`). One instance is created by
@@ -42,6 +46,27 @@ class AppContainer(
         fetchFeed = feedFetcher::fetch,
         clock = clock,
     )
+
+    /**
+     * Model downloads need much longer timeouts than feed requests. The native
+     * engine is created lazily by the summarizer, not at app startup.
+     */
+    private val modelHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.MINUTES)
+        .writeTimeout(5, TimeUnit.MINUTES)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("User-Agent", FeedHttp.USER_AGENT)
+                .build()
+            chain.proceed(request)
+        }
+        .build()
+
+    val modelManager = ModelManager(context.applicationContext.filesDir, modelHttpClient)
+
+    val articleSummarizer = LiteRtArticleSummarizer(modelManager.modelPath)
 
     private companion object {
         const val DATABASE_NAME = "feedbil.db"

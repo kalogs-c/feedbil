@@ -53,6 +53,29 @@ issues only; it is not a roadmap. Update it as milestones complete.
 - Retention runs after a feed update and once when the app starts.
   Nothing prunes while the app is closed, so expired articles can remain
   on disk until the next launch or refresh.
-- Model availability, supported devices, memory requirements, and APK
-  size impact for the on-device AI summary (milestone 6) are not yet
-  determined.
+- The on-device summary model is a ~2.59 GB one-time download and uses roughly
+  1.7 GB peak RAM on CPU. A supported 64-bit Android device with enough free
+  storage and memory is required; smaller/older devices may fail to load it.
+  The APK does not include the model.
+- Model download runs in the foreground with a progress bar: leaving the app
+  or screen cancels it, and the partial file is discarded. A background
+  download with a notification is deferred.
+- A single model is hard-coded. There is no model selection screen or download
+  of alternative models in the MVP, even though the app is structurally ready
+  for one.
+- The whole feed-provided article text is sent to the model with no truncation.
+  Very long articles may exceed the effective context window; the app reports
+  a specific error instead of a summary, and the input limit can be tuned
+  after real-device use.
+- Generated summaries are stored only in the article screen's ViewModel. They
+  are lost when the screen is closed; no summary is persisted or reused for AI
+  sharing yet (Milestone 7).
+- AI inference has not been exercised on a physical device with the real
+  model. JVM tests cover input preparation, prompt building, download state
+  handling and ViewModel states, but the native engine's behavior and latency
+  are unverified on hardware.
+- The model is downloaded from Hugging Face, which requires network access the
+  first time. Inference itself is offline; the feed text is never uploaded.
+  The expected byte count is pinned in `ModelManager`; if the publisher
+  replaces the model file, that constant must be updated or downloads will be
+  rejected as the wrong size.

@@ -84,6 +84,8 @@ fun FeedbilNavHost(
                     loadArticle = container.articleRepository::getById,
                     markRead = container.articleRepository::markRead,
                     articleId = articleId,
+                    summarizer = container.articleSummarizer,
+                    modelManager = container.modelManager,
                 )
             }
             ArticleDetailRoute(

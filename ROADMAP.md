@@ -354,36 +354,46 @@ for all links; images are a required feature and are no longer stripped.
 
 ### Milestone 6 — On-device AI summary
 
-**Status:** Not started.
+**Status:** Implemented 2026-11-19. All 153 JVM tests pass and debug/release
+APKs assemble. On-device inference with the real 2.59 GB model has **not**
+been run yet; that check is pending and is not claimed as passed.
 
 **Work**
 
-- Select and validate a LiteRT-compatible model suitable for short
-  article summaries.
-- Confirm model license, redistribution terms, supported Android
-  devices, memory requirements, and model size.
-- Implement a small AI interface so UI code does not depend directly on
-  runtime details.
-- Add the top-of-article AI button.
-- Run inference locally using the article content available in the app.
-- Show progress, generated summary, and understandable error states.
-- Handle empty/short content, overly long input, inference failure, and
+- [x] Select and validate a LiteRT-compatible model suitable for short
+  article summaries (Gemma 4 E2B IT int4, ~2.59 GB, Apache-2.0, public).
+- [x] Confirm model license, redistribution terms, supported Android
+  devices, memory requirements, and model size (see `DECISIONS.md` and
+  `LIMITATIONS.md`; runtime v0.16.1 documents the model).
+- [x] Implement a small AI interface (`ArticleSummarizer`) so UI code does
+  not depend directly on runtime details.
+- [x] Add the top-of-article AI button.
+- [x] Run inference locally using the article content available in the app.
+- [x] Show progress, generated summary, and understandable error states.
+- [x] Handle empty/short content, overly long input, inference failure, and
   unavailable model.
-- Keep inference off the main thread.
-- Do not transmit article text to a remote service.
+- [x] Keep inference off the main thread (background dispatcher + mutex).
+- [x] Do not transmit article text to a remote service. The only network
+  request is the one-time model file download.
 
 **Acceptance criteria**
 
-- Summary generation works offline on a supported device after the
-  model is available.
-- UI remains responsive during inference.
-- Failure does not block normal reading.
-- Output is presented as generated content, not as verified fact.
-- Model/runtime behavior and device requirements are documented.
+- [x] Summary generation is fully offline once the model file is available
+  (code path verified by unit tests; real-device check pending).
+- [x] UI remains responsive during inference (native work off the main
+  thread; modeled in ViewModel tests).
+- [x] Failure does not block normal reading (covered by tests).
+- [x] Output is presented as generated content, not as verified fact
+  ("Resumo gerado por IA" label; prompt forbids fabrication).
+- [x] Model/runtime behavior and device requirements are documented.
+- [x] 153 JVM tests pass on Windows (2026-11-19).
 
-**Decision gate** — Resolve model, model delivery, LiteRT API/runtime
-integration, input limits/truncation strategy, prompt or task format,
-output language, and summary length.
+**Decision gate** — Resolved 2026-11-19 (`DECISIONS.md`): LiteRT-LM Kotlin API
+pinned to 0.16.1 for Kotlin 2.2 compatibility; fixed public Gemma 4 E2B model
+with anonymous in-app download into `filesDir` and size validation; CPU
+backend; entire article text as input with no truncation for now; pt-BR output
+of ~2–3 sentences; untrusted article text may not issue instructions. A model
+picker is deferred, and summary reuse is left for Milestone 7.
 
 ### Milestone 7 — Sharing
 

@@ -582,6 +582,65 @@ content, not the publisher's full page. A malformed skipped tag without a
 closing tag no longer truncates the article: parsing continues after its
 opening tag, so its body may appear as plain (non-executable) text.
 
+## 2026-11-19 — On-device AI: LiteRT-LM 0.16.1, public Gemma 4 E2B, in-app download
+
+**Decision:** Summaries run locally through the LiteRT-LM Kotlin API
+(`com.google.ai.edge.litertlm:litertlm-android:0.16.1`) on the CPU backend.
+The single fixed model is `litert-community/gemma-4-E2B-it-litert-lm` /
+`gemma-4-E2B-it.litertlm` (2,588,147,712 bytes, Apache-2.0). The app downloads
+it anonymously from the Hugging Face `resolve/main` URL into `filesDir`, with a
+progress indicator and an expected-size check; no account, token or file
+import is needed. The model picker/settings idea is explicitly deferred.
+
+**Runtime version:** 0.16.1 is the newest release whose Kotlin metadata (2.3.0)
+the project's Kotlin 2.2.10 compiler can read; 0.17.0–0.18.1 carry 2.4.0
+metadata and need Kotlin 2.3+. This is the same pinning pattern used for
+rssparser and Coil. Upgrading the AGP/Kotlin toolchain was rejected for now:
+it would invalidate the confirmed baseline and several existing pins.
+Gemma 4 is supported at this runtime version (its README at tag v0.16.1 shows
+`gemma-4-E2B-it.litertlm`, and support landed in v0.11/v0.13).
+
+**Alternatives considered (model):**
+
+1. Gemma 3 1B IT int4 (~529 MB) — the best small-model quality, but its
+   Hugging Face repo is gated: the `resolve` URL returns 401 without a token,
+   which would require an HF account and contradict the no-account decision.
+2. Qwen3-0.6B (~614 MB, Apache-2.0, public) — good size and license, but its
+   `.litertlm` file requires LiteRT-LM 0.18+, i.e. a Kotlin toolchain upgrade.
+3. Gemma 4 E2B (chosen) — public, anonymous download, modern model, works on
+   the pinned runtime. Cost: ~2.59 GB download and ~1.7 GB peak CPU RAM.
+
+**Alternatives considered (delivery):**
+
+1. Bundle the model in `assets/` — offline from first launch, but a 2.59 GB
+   APK is impractical and the model could not be updated independently.
+2. Manual file import — no network code, but the most setup friction.
+3. Gallery-style HF browser login + WorkManager background download — best
+   UX, but OAuth registration, secure token storage and a worker with
+   notification are a separate milestone's worth of work.
+4. Anonymous in-app streaming download (chosen) — reuses OkHttp with a
+   dedicated long-timeout client, verifies the byte count before the engine
+   sees the path, and writes through a `.part` file so a cancelled or failed
+   download never leaves a corrupt model behind.
+
+**AI contract:** The entire feed-provided text is used (HTML stripped by the
+M5 sanitizer, `contentHtml` preferred over `description`); there is no
+truncation yet, and the user asked to tune it after real use. Output is pt-BR,
+bounded to ~200 tokens (roughly 2–3 sentences), uses low-temperature sampling
+and a system instruction that forbids invented facts, markdown and preambles,
+and explicitly treats article text as data so embedded instructions are
+ignored. Output is always labeled "Resumo gerado por IA". The summary lives in
+ViewModel memory only; reuse/caching for sharing is Milestone 7's decision.
+
+**Consequences:** An engine is created lazily on the first summary and reused
+afterwards, serialized by a mutex; all native work runs on a background
+dispatcher. Long articles may exceed the effective context and surface a
+specific error rather than a crash. Reading, share and feed features do not
+depend on the model being present.
+
+**Deferred:** model selection UI, persistent summaries, background download,
+and GPU/NPU backends.
+
 ## 2026-11-19 — Links open in the external browser
 
 **Decision:** Both the inline links in article content and the "Abrir

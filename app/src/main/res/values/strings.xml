@@ -79,4 +79,20 @@
     <string name="article_detail_image">Imagem do artigo</string>
     <string name="action_open_original">Abrir original</string>
     <string name="action_open_article">Abrir artigo</string>
+
+    <!-- On-device AI summary -->
+    <string name="ai_summary_button">Gerar resumo</string>
+    <string name="ai_summary_download_button">Baixar modelo</string>
+    <string name="ai_summary_download_title">Modelo de IA</string>
+    <string name="ai_summary_download_description">O resumo é gerado no seu aparelho. O modelo (cerca de 2,6 GB) é baixado uma única vez; depois disso, o resumo funciona sem internet.</string>
+    <string name="ai_summary_downloading">Baixando modelo… %1$d%%</string>
+    <string name="ai_summary_download_failed">Não foi possível baixar o modelo. Verifique sua conexão e tente novamente.</string>
+    <string name="ai_summary_generating">Gerando resumo…</string>
+    <string name="ai_summary_label">Resumo gerado por IA</string>
+    <string name="ai_summary_retry">Tentar novamente</string>
+    <string name="ai_summary_error_empty">Este artigo não tem texto suficiente para gerar um resumo.</string>
+    <string name="ai_summary_error_empty_output">O modelo não conseguiu produzir um resumo. Tente novamente.</string>
+    <string name="ai_summary_error_input">Este artigo é longo demais para o modelo de resumo.</string>
+    <string name="ai_summary_error_model">O modelo de IA não está disponível no aparelho.</string>
+    <string name="ai_summary_error_inference">Não foi possível gerar o resumo. A leitura do artigo não foi afetada.</string>
 </resources>

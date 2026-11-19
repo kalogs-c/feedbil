@@ -1,14 +1,18 @@
 package com.kalogsc.feedbil.ui.articles
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.kalogsc.feedbil.R
+import com.kalogsc.feedbil.ai.ModelState
+import com.kalogsc.feedbil.ai.SummaryError
 import com.kalogsc.feedbil.domain.HttpUrlValidator
 import com.kalogsc.feedbil.domain.model.Article
 import com.kalogsc.feedbil.ui.common.formatDateTime
@@ -58,6 +65,8 @@ fun ArticleDetailRoute(
         state = state,
         onBack = onBack,
         onRetry = viewModel::retry,
+        onSummarize = viewModel::summarize,
+        onDownloadModel = viewModel::downloadModel,
     )
 }
 
@@ -67,6 +76,8 @@ fun ArticleDetailScreen(
     state: ArticleDetailUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onSummarize: () -> Unit = {},
+    onDownloadModel: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -127,7 +138,12 @@ fun ArticleDetailScreen(
                         }
                     }
 
-                    state.article != null -> ArticleContent(article = state.article)
+                    state.article != null -> ArticleContent(
+                        article = state.article,
+                        state = state,
+                        onSummarize = onSummarize,
+                        onDownloadModel = onDownloadModel,
+                    )
                 }
             }
         }
@@ -135,7 +151,12 @@ fun ArticleDetailScreen(
 }
 
 @Composable
-private fun ArticleContent(article: Article) {
+private fun ArticleContent(
+    article: Article,
+    state: ArticleDetailUiState,
+    onSummarize: () -> Unit,
+    onDownloadModel: () -> Unit,
+) {
     val blocks = remember(article) { ArticleContentFormatter.format(article) }
     val sourceUrl = remember(article) { HttpUrlValidator.sanitize(article.link) }
     val uriHandler = LocalUriHandler.current
@@ -167,6 +188,12 @@ private fun ArticleContent(article: Article) {
                 )
             }
             Spacer(Modifier.height(12.dp))
+            SummarySection(
+                state = state,
+                onSummarize = onSummarize,
+                onDownloadModel = onDownloadModel,
+            )
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.article_detail_content_source),
                 style = MaterialTheme.typography.labelMedium,
@@ -217,6 +244,117 @@ private fun ArticleContent(article: Article) {
             Spacer(Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+private fun SummarySection(
+    state: ArticleDetailUiState,
+    onSummarize: () -> Unit,
+    onDownloadModel: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(12.dp),
+    ) {
+        when (val model = state.modelState) {
+            is ModelState.Downloading -> {
+                Text(
+                    text = stringResource(
+                        R.string.ai_summary_downloading,
+                        (model.bytes * 100 / model.total).toInt().coerceIn(0, 100),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { (model.bytes.toFloat() / model.total).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            ModelState.NotDownloaded, is ModelState.Failed -> {
+                Text(
+                    text = stringResource(R.string.ai_summary_download_title),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.ai_summary_download_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                Button(onClick = onDownloadModel, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.ai_summary_download_button))
+                }
+                if (model is ModelState.Failed) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.ai_summary_download_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            ModelState.Ready -> {
+                state.summary?.let { summary ->
+                    Text(
+                        text = stringResource(R.string.ai_summary_label),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(text = summary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
+                }
+                if (state.summaryLoading) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.ai_summary_generating),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                state.summaryError?.let { error ->
+                    Text(
+                        text = stringResource(summaryErrorMessage(error)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                Button(
+                    onClick = onSummarize,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.summaryLoading,
+                ) {
+                    Text(
+                        stringResource(
+                            if (state.summary == null) R.string.ai_summary_button
+                            else R.string.ai_summary_retry,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun summaryErrorMessage(error: SummaryError): Int = when (error) {
+    SummaryError.EMPTY_CONTENT -> R.string.ai_summary_error_empty
+    SummaryError.EMPTY_OUTPUT -> R.string.ai_summary_error_empty_output
+    SummaryError.INPUT_TOO_LONG -> R.string.ai_summary_error_input
+    SummaryError.MODEL_UNAVAILABLE -> R.string.ai_summary_error_model
+    SummaryError.INFERENCE_FAILED -> R.string.ai_summary_error_inference
 }
 
 @Composable
