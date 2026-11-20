@@ -104,9 +104,19 @@ class ArticleListViewModelTest {
 
     @Test
     fun `manual refresh runs again and reports per-feed failures`() = runBlocking {
-        feedRepository.add("Example", "https://example.com/rss")
+        val feed = feedRepository.add("Example", "https://example.com/rss")
+        // A fixed feed list removes Room emission timing from the launch refresh,
+        // so the manual refresh cannot overlap it.
+        observeList = { flowOf(emptyList<ArticleListItem>() to listOf(feed)) }
+        val launchRefresh = CompletableDeferred<Unit>()
+        refreshAction = {
+            launchRefresh.complete(Unit)
+            RefreshSummary(feedCount = 1, newArticleCount = 0, failures = emptyList())
+        }
         val viewModel = viewModel()
+        withTimeout(AWAIT_TIMEOUT_MS) { launchRefresh.await() }
         viewModel.awaitState { !it.isLoading && !it.isRefreshing }
+
         val failure = FeedRefreshFailure(
             feedId = 1,
             feedName = "Example",
