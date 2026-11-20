@@ -991,3 +991,51 @@ new AGP 9.3+ optimization DSL. A release rebuild succeeds and all 196 JVM
 tests pass; the final proof is launching the next signed CI release APK on
 a physical device. If a similar `IllegalAccessError` appears for another
 package-private chain, switch to `-dontrepackage` (option 2).
+
+## 2026-11-20 — One rolling `latest` release replaces per-commit releases
+
+**Decision:** `.github/workflows/release.yml` now updates a single GitHub
+Release tagged `latest` on every push to `main`. The attached APK is always
+named `feedbil-latest.apk` and is replaced on each run; no `build-<number>`
+tag or release is created. The release is not a prerelease so GitHub marks it
+as the latest release. Superseded runs are cancelled rather than queued, so a
+slower older commit cannot overwrite a newer APK.
+
+This supersedes the 2026-11-19 "per-commit builds" decision and its
+consequence that releases accumulate without pruning.
+
+**Versioning:** `versionCode` and `versionName` are derived from
+`git rev-list --count HEAD` (`versionName = 1.0.<count>`). The commit hash is
+not used: Android requires an integer `versionCode`, and the user prefers a
+plain count. Checkout uses `fetch-depth: 0` so the full history is available.
+
+**Alternatives considered:**
+
+1. Keep a release/tag per push and prune old ones later — still creates tag
+   churn, which is the problem being solved.
+2. Delete and recreate the release and tag on every run — the tag would point
+   at the newest commit, but needs extra `gh`/API calls and briefly leaves no
+   download if a step fails.
+3. Rolling release with a fixed `1.0` / versionCode 1 — rejected when first
+   considered: Android could not detect a new build. A version derived from
+   the commit count keeps update detection working without a run number.
+4. Commit hash in `versionName` — more precise, but the user does not need it;
+   a count is easier to read and compare.
+5. Actions run number for the version — monotonic and CI-visible, but tied to
+   workflow runs rather than to the commit being built.
+
+**Rationale:** During active development every commit produces a build and
+only the newest one is useful. A single predictable download URL avoids
+dozens of tags the user has to ignore or clean up. Deriving the version from
+the commit keeps it tied to the source rather than to CI history.
+
+**Consequences:** Only the newest snapshot is downloadable; a specific older
+build cannot be recovered from Releases. `git rev-list --count HEAD` can
+repeat or decrease after a rebase, amended history, or force-push, which
+weakens Android's update ordering — a fresh install is then required in the
+worst case. The git `latest` tag keeps pointing at the commit that first
+created the release; only the release metadata and asset are updated.
+Existing `build-*` releases and tags are deleted once as a one-time migration
+after the new workflow has produced a verified release; CI does not delete
+releases on its own.
+

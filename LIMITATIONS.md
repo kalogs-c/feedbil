@@ -110,6 +110,10 @@ issues only; it is not a roadmap. Update it as milestones complete.
   targets, and AI responsiveness) were run by the user on a physical device
   and all passed (2026-11-19).
 - Automated GitHub Releases are development snapshots built on every push to
-  `main`. They are signed with a self-signed key held in Actions secrets,
-  not reviewed by Google Play. If that key is lost or rotated, users must
-  uninstall before installing a build signed with a different key.
+  `main`. A single `latest` release is overwritten each time, so only the
+  newest APK is available; older builds cannot be downloaded again. The
+  version comes from the commit count, which can repeat or decrease after a
+  history rewrite, in which case Android may not offer an update. Builds are
+  signed with a self-signed key held in Actions secrets, not reviewed by
+  Google Play. If that key is lost or rotated, users must uninstall before
+  installing a build signed with a different key.

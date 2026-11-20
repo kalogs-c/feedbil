@@ -8,10 +8,11 @@ on:
 permissions:
   contents: write
 
-# Queue runs instead of cancelling them so every commit gets a release.
+# Only the newest commit matters for the single rolling release; cancelling a
+# superseded run also prevents an older APK from overwriting the newer one.
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -21,6 +22,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The version is derived from the full commit history.
+          fetch-depth: 0
+
+      - name: Compute version from commit count
+        id: version
+        run: |
+          count=$(git rev-list --count HEAD)
+          echo "code=$count" >> "$GITHUB_OUTPUT"
+          echo "name=1.0.$count" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v6
@@ -88,8 +99,8 @@ jobs:
         run: |
           ./gradlew :app:assembleRelease \
             -Pandroid.builder.sdkDownload=true \
-            -Pfeedbil.versionCode=${{ github.run_number }} \
-            -Pfeedbil.versionName=1.0.${{ github.run_number }}
+            -Pfeedbil.versionCode=${{ steps.version.outputs.code }} \
+            -Pfeedbil.versionName=${{ steps.version.outputs.name }}
 
       - name: Verify APK signature
         run: |
@@ -97,20 +108,24 @@ jobs:
           APKSIGNER="$(find "$SDK/build-tools" -name apksigner -type f | sort -V | tail -1)"
           APK="app/build/outputs/apk/release/app-release.apk"
           "$APKSIGNER" verify --print-certs "$APK"
-          cp "$APK" "feedbil-${{ github.run_number }}.apk"
+          cp "$APK" "feedbil-latest.apk"
 
+      # The fixed tag and file name make this a rolling release: each run
+      # replaces the previous release's body and APK instead of adding a tag.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Feedbil build ${{ github.run_number }}
+          tag_name: latest
+          name: Feedbil latest (build ${{ steps.version.outputs.code }})
           body: |
-            Automated development build from commit ${{ github.sha }}.
+            Automated development build ${{ steps.version.outputs.code }} from commit ${{ github.sha }}.
 
             Signed with the project's release key. Download the APK below to
             install it directly on an Android 8.0+ device.
-          prerelease: true
-          files: feedbil-${{ github.run_number }}.apk
+          prerelease: false
+          make_latest: true
+          overwrite_files: true
+          files: feedbil-latest.apk
 
       - name: Remove signing keystore
         if: always()

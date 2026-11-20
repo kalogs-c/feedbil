@@ -9,10 +9,11 @@ LiteRT.
 
 ## Downloads
 
-Signed development builds are published to
-[GitHub Releases](https://github.com/kalogs-c/feedbil/releases) on every
-push to `main`. Download the attached `feedbil-<build>.apk` and install it
-directly on an Android 8.0+ device. These are automated, unreviewed
+Signed development builds are published to the single
+[latest GitHub Release](https://github.com/kalogs-c/feedbil/releases/latest)
+on every push to `main`. Download the attached `feedbil-latest.apk` and
+install it directly on an Android 8.0+ device. Each build replaces the
+previous one; older snapshots are not kept. These are automated, unreviewed
 snapshots, not a Google Play release.
 
 The MVP scope, milestones, and acceptance criteria are defined in
