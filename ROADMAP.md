@@ -619,3 +619,13 @@ The template placeholder icon was replaced with the Feedbil logo (solid
 `#131313` background, white "f + RSS" mark in the adaptive safe zone). No
 app behavior changed; launcher and splash-screen appearance still needs a
 device check by the user. Rationale and alternatives: `DECISIONS.md`.
+
+### Post-MVP — release build crash fix (2026-11-20)
+
+The signed release APK crashed on launch with an `IllegalAccessError` in
+Kotlin's multifile part-class hierarchy after R8 repackaging; the debug
+install was unaffected. A targeted keep rule was added in
+`app/src/main/keepRules/rules.keep`. `assembleRelease` succeeds, the R8
+mapping no longer repackages those classes, and all 196 JVM tests pass.
+Launch verification with the next signed CI release APK on a physical
+device is pending. Decision and alternatives: `DECISIONS.md`.

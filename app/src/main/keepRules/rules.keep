@@ -10,3 +10,10 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# Kotlin's "multifile part" classes (StringsKt__*, CollectionsKt__*, ...) inherit
+# from each other and are package-private. With R8 repackaging enabled, one part
+# can be moved to the default package while its superclass stays in kotlin.*,
+# which makes the verifier throw IllegalAccessError at runtime. Keep their names
+# while still allowing shrinking and optimization.
+-keep,allowshrinking,allowoptimization class kotlin.**Kt__*

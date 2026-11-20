@@ -945,3 +945,49 @@ APK. Removing the duplicate secret eliminates that failure class.
 `RELEASE_KEY_PASSWORD` secret is ignored and can be deleted. If the keystore
 is ever regenerated as JKS with a distinct key password, the workflow and
 this decision must be revisited.
+
+## 2026-11-20 — Keep Kotlin multifile part classes in the release build
+
+**Decision:** Add
+`-keep,allowshrinking,allowoptimization class kotlin.**Kt__*` to
+`app/src/main/keepRules/rules.keep` and retain the template's
+`optimization { enable = true; packageScope = ... }` configuration.
+Release R8 optimization stays enabled.
+
+**Context:** The signed GitHub Release APK crashed on launch, while the
+Android Studio debug install worked. The retraced stack trace was
+`java.lang.IllegalAccessError: Class kotlin.text.m extended by class lj2 is inaccessible`
+at `Room.databaseBuilder` in `AppContainer`. The release mapping showed that
+R8 had repackaged `kotlin.text.StringsKt__StringNumberConversionsJVMKt` into
+the unnamed package (`lj2`) while its package-private superclass
+`StringsKt__IndentKt` stayed in `kotlin.text` (`kotlin.text.m`). Kotlin
+multifile part classes form inheritance chains, so moving only one of them
+breaks verification. Debug has optimization disabled and was unaffected.
+
+**Alternatives considered:**
+
+1. Targeted keep rule (chosen) — pins the names and packages of all Kotlin
+   multifile parts while still allowing shrinking and optimization. This is
+   a known, effectively free workaround for the same R8 failure seen in
+   other apps.
+2. Add `-dontrepackage` globally — fixes the whole class of cross-package
+   access errors, but slightly increases DEX size because repackaging is
+   skipped for every optimized class.
+3. Remove `packageScope` — Google recommends not using it once an app
+   already enables R8, but doing so brings app and LiteRT code under full
+   R8. The LiteRT AAR ships no consumer keep rules, so this risks a new
+   native/reflection regression that needs its own device verification.
+4. Disable release optimization — guarantees parity with the working debug
+   build, but gives up all code and resource shrinking.
+
+**Rationale:** The targeted rule addresses exactly the observed failure
+with the smallest change and no new risk to the on-device AI path. The
+repackaged class was unused and is removed by shrinking; the part classes
+that remain keep their original names and packages, so the inheritance
+chain is consistent again.
+
+**Consequences:** Keep rules live in `src/main/keepRules/*.keep` under the
+new AGP 9.3+ optimization DSL. A release rebuild succeeds and all 196 JVM
+tests pass; the final proof is launching the next signed CI release APK on
+a physical device. If a similar `IllegalAccessError` appears for another
+package-private chain, switch to `-dontrepackage` (option 2).
