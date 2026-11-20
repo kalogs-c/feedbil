@@ -910,32 +910,38 @@ secrets are lost or rotated, users must uninstall before installing a
 build with a different signature. Linux CI builds and end-to-end release
 creation are unverified until the first workflow run completes.
 
-## 2026-11-20 — Release keystore is PKCS12; key password equals store password
+## 2026-11-20 — Release keystore is PKCS12; CI derives the key password from the store password
 
 **Decision:** Keep the existing release keystore in its generated format. It
 starts with the ASN.1 `30 82` bytes, so it is PKCS12 despite the `.jks`
 extension. PKCS12 encrypts the private key with the store password and
-`keytool` ignores a separate `-keypass`; therefore `RELEASE_KEY_PASSWORD`
-must hold the same value as `RELEASE_STORE_PASSWORD`.
+`keytool` ignores a separate `-keypass`. The workflow therefore passes
+`secrets.RELEASE_STORE_PASSWORD` as both `FEEDBIL_RELEASE_STORE_PASSWORD`
+and `FEEDBIL_RELEASE_KEY_PASSWORD`; `RELEASE_KEY_PASSWORD` is no longer
+read. An inspection step runs `keytool -list` and `keytool -certreq` on the
+decoded file before Gradle so a bad password or alias fails with a clear
+message.
 
 **Alternatives considered:**
 
 1. Regenerate with `-storetype JKS` and distinct store/key passwords, then
    re-set all four secrets — cleaner separation, but it replaces a key that
    may already be distributed in signed builds and repeats the secret setup.
-2. Change the workflow to derive the key password from the store-password
-   secret — removes a duplicate secret, but silently breaks if a JKS
-   keystore with a distinct key password is adopted later.
-3. Keep the keystore and align the two secret values (chosen) — no key
-   rotation and no workflow change.
+2. Keep a duplicate `RELEASE_KEY_PASSWORD` secret and align its value with
+   the store password — no workflow change, but re-entering a write-only
+   secret twice invited whitespace/typo mismatches, which happened twice.
+3. Derive the key password from the store-password secret (chosen) — one
+   known-good value, no duplicate to keep in sync, and an explicit
+   diagnostic step if the assumption stops holding.
 
 **Rationale:** A mismatched key password fails at `:app:packageRelease`
 with `Given final block not properly padded`. This was reproduced locally
 with a throwaway PKCS12 keystore: the distinct `-keypass` was ignored by
 `keytool`, a different `FEEDBIL_RELEASE_KEY_PASSWORD` reproduced the exact
 CI error, and setting it to the store password produced a verified signed
-APK.
+APK. Removing the duplicate secret eliminates that failure class.
 
-**Consequences:** Two repository secrets hold the same string. If the
-keystore is ever regenerated as JKS with a distinct key password, both the
-secret values and this assumption must be revisited.
+**Consequences:** CI needs three secrets, not four; an existing
+`RELEASE_KEY_PASSWORD` secret is ignored and can be deleted. If the keystore
+is ever regenerated as JKS with a distinct key password, the workflow and
+this decision must be revisited.

@@ -46,9 +46,8 @@ jobs:
           KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS; do
             if [ -z "${!name}" ]; then
               echo "::error::Missing signing secret: $name"
               exit 1
@@ -62,6 +61,20 @@ jobs:
           mkdir -p "$RUNNER_TEMP/feedbil-signing"
           printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/feedbil-signing/release.jks"
 
+      # Fails here with a clear message if the store password or key password
+      # does not match the decoded file, instead of surfacing later in Gradle.
+      - name: Inspect signing keystore
+        env:
+          FEEDBIL_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          FEEDBIL_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        run: |
+          KEYSTORE="$RUNNER_TEMP/feedbil-signing/release.jks"
+          keytool -list -keystore "$KEYSTORE" -storepass "$FEEDBIL_RELEASE_STORE_PASSWORD"
+          keytool -certreq -alias "$FEEDBIL_RELEASE_KEY_ALIAS" -keystore "$KEYSTORE" \
+            -storepass "$FEEDBIL_RELEASE_STORE_PASSWORD" \
+            -keypass "$FEEDBIL_RELEASE_STORE_PASSWORD" \
+            -file "$RUNNER_TEMP/feedbil-signing/diagnostic.csr"
+
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest -Pandroid.builder.sdkDownload=true
 
@@ -70,7 +83,8 @@ jobs:
           FEEDBIL_RELEASE_STORE_FILE: ${{ runner.temp }}/feedbil-signing/release.jks
           FEEDBIL_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           FEEDBIL_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          FEEDBIL_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          # PKCS12 encrypts the key with the store password; no duplicate secret.
+          FEEDBIL_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
         run: |
           ./gradlew :app:assembleRelease \
             -Pandroid.builder.sdkDownload=true \
