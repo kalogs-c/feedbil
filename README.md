@@ -1,5 +1,6 @@
 # Feedbil
 
+[![Test](https://github.com/kalogs-c/feedbil/actions/workflows/test.yml/badge.svg)](https://github.com/kalogs-c/feedbil/actions/workflows/test.yml)
 [![Release](https://github.com/kalogs-c/feedbil/actions/workflows/release.yml/badge.svg)](https://github.com/kalogs-c/feedbil/actions/workflows/release.yml)
 
 Local-first Android RSS reader built with Kotlin and Jetpack Compose.
@@ -60,6 +61,10 @@ From Windows (PowerShell or cmd):
 Instrumented tests (`.\gradlew.bat :app:connectedDebugAndroidTest`)
 require a running emulator or a physical device with USB debugging
 enabled.
+
+On GitHub, the **Test** workflow runs the unit tests on every push and pull
+request. The **Release** workflow only runs on `main` and builds and
+publishes the signed APK without re-running the tests.
 
 ## Project layout
 

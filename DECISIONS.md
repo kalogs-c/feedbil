@@ -1039,3 +1039,36 @@ Existing `build-*` releases and tags are deleted once as a one-time migration
 after the new workflow has produced a verified release; CI does not delete
 releases on its own.
 
+## 2026-11-20 — Separate Test and Release workflows
+
+**Decision:** Unit tests run in a new `.github/workflows/test.yml` ("Test") on
+every push to any branch and on every pull request. `.github/workflows/release.yml`
+no longer runs tests; it builds and publishes only on `main`. A job-level guard
+also prevents manual dispatch from a non-`main` ref from publishing under
+`latest`.
+
+This supersedes the "automated tests gate publication" rule in the 2026-11-19
+GitHub Releases decision.
+
+**Alternatives considered:**
+
+1. Keep the unit-test step in the release workflow as a second gate — the
+   smallest change, and it prevents a broken APK from replacing a working
+   download, but tests would run twice on every `main` push. Rejected by the
+   user in favor of clean separation.
+2. Trigger release from the Test workflow's successful completion — gates
+   publication without duplication, but needs SHA mapping, permission
+   scoping, and special handling for manual dispatch.
+3. Require the Test check through branch protection — real enforcement for
+   merges, but it is a GitHub repository setting outside this project's files
+   and does not stop direct pushes.
+
+**Rationale:** The user wants fast, secret-free feedback on all commits and
+pull requests, with release activity confined to `main`. A dedicated workflow
+makes that split explicit; duplicating the test run only to re-prove what the
+Test workflow already reported was judged not worth it.
+
+**Consequences:** A failing Test check does not block a release for a `main`
+push. If enforcement is wanted later, it must be added as a branch-protection
+rule requiring the "Test" check. Each `main` push runs the suite once instead
+of twice. Pull requests need no signing secrets, so forks are safe.

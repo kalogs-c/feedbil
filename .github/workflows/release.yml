@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   release:
+    # Manual dispatch must not publish a feature-branch build under `latest`.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -85,9 +87,6 @@ jobs:
             -storepass "$FEEDBIL_RELEASE_STORE_PASSWORD" \
             -keypass "$FEEDBIL_RELEASE_STORE_PASSWORD" \
             -file "$RUNNER_TEMP/feedbil-signing/diagnostic.csr"
-
-      - name: Run unit tests
-        run: ./gradlew :app:testDebugUnitTest -Pandroid.builder.sdkDownload=true
 
       - name: Build signed release APK
         env:
